@@ -304,7 +304,7 @@ var toastT;function toast(m){var d=document.getElementById("toastEl");if(d)d.rem
 var openTaskId=null;
 var modalTok=0;
 function reducedMotion(){return window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches}
-function modal(html,onMount,opts){modalTok++;var L=document.getElementById("layer");var dr=opts&&opts.drawer&&isDesk();L.innerHTML='<div class="scrim'+(dr?" drawer":"")+'" data-a="closeScrim"><div class="modal" role="dialog"><div class="grab" aria-hidden="true"></div>'+html+'</div></div>';var m=L.querySelector(".modal");wireSheetDrag(m);if(onMount)onMount(m)}
+function modal(html,onMount,opts){modalTok++;var L=document.getElementById("layer");var dr=opts&&opts.drawer&&isDesk();L.innerHTML='<div class="scrim'+(dr?" drawer":"")+'" data-a="closeScrim"><div class="modal" role="dialog"><div class="grab" aria-hidden="true"></div>'+html+'</div></div>';var m=L.querySelector(".modal");wireSheetDrag(m);if(onMount)onMount(m);annotateTerms(m)}
 function wireSheetDrag(m){var y0=null,dy=0;m.addEventListener("touchstart",function(e){if(m.scrollTop>0||e.target.closest("input,textarea,select,button"))return;y0=e.touches[0].clientY;dy=0;m.style.transition="none"},{passive:true});
   m.addEventListener("touchmove",function(e){if(y0==null)return;dy=e.touches[0].clientY-y0;if(dy>0)m.style.transform="translateY("+dy+"px)"},{passive:true});
   m.addEventListener("touchend",function(){if(y0==null)return;m.style.transition="";if(dy>110)closeModal();else m.style.transform="";y0=null})}
@@ -369,6 +369,7 @@ function render(){
   if(S.tab==="board"&&p&&S.d){if(phone)wireSwipe();else wireDrag()}
   if(S.tab==="ideas"&&p&&S.d&&WB.boardId)mountWB();
   if(S.focusSearch){var si=document.getElementById("search");if(si){si.focus();var L2=si.value.length;si.setSelectionRange(L2,L2)}S.focusSearch=false}
+  annotateTerms(app);
   S.slideDir=null;
 }
 function deskShell(p,body){var hr=new Date().getHours();var greet=(hr<12?"Good morning":hr<18?"Good afternoon":"Good evening")+(S.user.name?", "+esc(S.user.name.split(" ")[0]):"");
@@ -841,6 +842,83 @@ function reportText(){var p=P(),r=rag(),RN={G:"GREEN, on track",A:"AMBER, at ris
   return L.join("\n")}
 
 /* ---------- Guide (best practices) ---------- */
+/* ---------- term help ("?" tips) ---------- */
+var TERMS={
+ "backlog":["Backlog","Every task that's been captured but isn't being worked on yet, in priority order. Ideas become tasks here first.","Pull from the top during sprint planning."],
+ "to do":["To Do","Work picked for now that hasn't started yet.","Only move a task here if someone will start it soon."],
+ "in progress":["In Progress","Someone is actively working on it right now.","Keep this column small. See WIP limit."],
+ "review":["Review","Finished by the owner and waiting for the other person to check it against the acceptance criteria.","Reviewing a teammate's work comes before starting anything new."],
+ "to review":["To review","Tasks your teammate finished that are waiting for you to check.","Review first, then start new work."],
+ "done":["Done","Finished and checked. Every acceptance criterion is met.","If it isn't checked, it isn't done."],
+ "wip":["WIP limit","Work In Progress limit: the most tasks allowed in In Progress at the same time.","Hit the limit? Finish or review something before you start new work."],
+ "in progress ":["WIP limit","",""],
+ "sprint backlog":["Sprint backlog","The tasks the two of you committed to finishing this sprint.","New requests go to the main backlog, not here, unless they break the sprint goal."],
+ "sprint goal":["Sprint goal","One sentence that says what will be true at the end of the sprint.","Example: \"Bert can run a full mock interview on his own.\""],
+ "sprint planning":["Sprint planning","A short meeting at the start of a sprint to choose the goal and pull tasks from the backlog.","Plan only as many points as your usual velocity."],
+ "sprint calendar":["Sprint calendar","The dates of each sprint, with its planning and retro meetings.",""],
+ "past sprints":["Past sprints","Closed sprints and how many points each one finished.","This history is what velocity is based on."],
+ "sprint":["Sprint","A fixed time box, usually 1–2 weeks, where you commit to a small set of tasks and finish them.","Sprints end on schedule even when work is left over. Unfinished tasks go back to the backlog."],
+ "story points":["Story points","A relative size for a task that combines effort, complexity and uncertainty. It is not hours.","Use 1, 2, 3, 5, 8, 13. Anything over 8 should be split."],
+ "points":["Story points","A relative size for a task (1, 2, 3, 5, 8, 13). Bigger means more effort or more unknowns.",""],
+ "priority":["Priority (MoSCoW)","Must: the project fails without it. Should: important, but there's a workaround. Could: nice if there's time. Won't: not this time, and agreed.","Do Musts first. If everything is a Must, nothing is."],
+ "must":["Must","The project fails or slips without this.","Ask: if this were the only thing missing, would we delay?"],
+ "should":["Should","Important, but there's a workaround if it slips.",""],
+ "could":["Could","Nice to have if there's time left over.",""],
+ "won't":["Won't (this time)","Agreed to leave out of this round. Writing it down stops scope creep.",""],
+ "acceptance criteria":["Acceptance criteria","A checklist that proves the task is done. The reviewer checks against it.","Example: \"Venue booked · deposit paid · confirmation shared\"."],
+ "blocked by":["Blocked by (dependency)","This task can't start until another task is finished.","Chains of dependencies make up the critical path."],
+ "blockers":["Blocker","Anything stopping your work: waiting on someone, missing info, a tool that's broken.","Raise it in today's standup. Helping unblock your teammate comes first."],
+ "assignee":["Assignee","The one person responsible for getting the task done.","Exactly one per task. \"We'll both do it\" usually means nobody will."],
+ "due date":["Due date","When the task needs to be finished.","Set it a little before the real deadline to leave a buffer."],
+ "status":["Status","Where a task is in the flow: Backlog → To Do → In Progress → Review → Done.",""],
+ "burndown":["Burndown chart","Points left in the sprint, plotted day by day. The dashed line is the ideal pace.","Above the line means behind. Talk about it at standup instead of waiting for the retro."],
+ "velocity":["Velocity","Average story points the team finishes per sprint.","Use it to decide how much to plan next sprint, not to compare people."],
+ "standups":["Standup","A daily 2-minute check-in: what I did yesterday, what I'm doing today, any blockers.","Blockers are the point. Raise them early."],
+ "standup":["Standup","A daily 2-minute check-in: what I did yesterday, what I'm doing today, any blockers.",""],
+ "retros":["Retrospective","A short meeting at the end of a sprint to improve how you work together (not to blame anyone).","End with 1–3 actions, each with an owner."],
+ "retrospective":["Retrospective","A short meeting at the end of a sprint to improve how you work together.","No actions means no retro."],
+ "charter":["Project charter","A one-page agreement on why the project exists, what's in and out of scope, who decides, and what success looks like.","Settles scope arguments before they start."],
+ "project charter":["Project charter","A one-page agreement on why, what, who decides, and what done looks like.",""],
+ "stakeholders":["Stakeholders & RACI","People affected by or with a say in the project. RACI shows each person's role: Responsible, Accountable, Consulted, Informed.","Exactly one Accountable per decision."],
+ "raci":["RACI","R = does the work · A = owns the outcome and makes the final call · C = asked before deciding · I = told after.",""],
+ "risks":["Risk","Something that might go wrong but hasn't yet. Score = probability × impact.","12 or more: act now. A risk that happens becomes an issue."],
+ "risk register":["Risk register","The list of risks, each with a score, an owner and a plan.","Review it at every sprint planning."],
+ "probability":["Probability","How likely the risk is: 1 = rare, 5 = almost certain.",""],
+ "impact":["Impact","How bad it would be if it happened: 1 = minor, 5 = severe.",""],
+ "mitigation":["Mitigation","Your response to a risk: avoid it, reduce it, transfer it, or accept it with a plan B.",""],
+ "decisions":["Decision log","A record of what was decided, by whom, and why.","Stops you from having the same debate twice."],
+ "decision log":["Decision log","A record of what was decided, by whom, and why.",""],
+ "health check":["Health check","Tandem's automatic review of your project, flagging what an experienced PM would notice: overloaded WIP, Musts without dates, risks with no owner.",""],
+ "what a senior pm would flag":["Health check","Problems an experienced project manager would notice right away. Tap Fix it to jump there.",""],
+ "status report":["Status report","A weekly update: Green = on track, Amber = at risk with a plan, Red = off track and needs help.","Always end with a clear ask."],
+ "weekly status report":["Status report","Green = on track, Amber = at risk with a plan, Red = needs help. Report Amber early.",""],
+ "workload":["Workload","How much open work each person has.","Uneven load is a risk. Rebalance at sprint planning."],
+ "due today":["Due today","Tasks assigned to you that are due today.",""],
+ "overdue":["Overdue","Your tasks that are past their due date.","Either finish them or agree on a new date. Don't leave them silently late."],
+ "templates":["Templates","Ready-made brainstorming layouts, like Start·Stop·Continue or an impact/effort grid.",""],
+ "snapshots":["Snapshot","A saved picture of a board at a point in time, kept as a record.",""]
+};
+delete TERMS["in progress "];
+var TERMKEYS=Object.keys(TERMS).sort(function(a,b){return b.length-a.length});
+function tipsOn(){return lsGet("pmhub.tips")!=="off"}
+function termFor(txt){var t=(txt||"").toLowerCase().replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu,"").replace(/[·().,:…!?]|\d+/g," ").replace(/\s+/g," ").trim();if(!t)return null;
+  if(TERMS[t])return t;for(var i=0;i<TERMKEYS.length;i++){var k=TERMKEYS[i];if(t.indexOf(k)===0&&(t.length===k.length||t.charAt(k.length)===" "))return k}return null}
+function annotateTerms(root){if(!root)return;
+  root.querySelectorAll(".pill").forEach(function(el){var k=termFor(el.textContent);if(k&&!el.title)el.title=TERMS[k][0]+": "+TERMS[k][1]});
+  if(!tipsOn())return;
+  root.querySelectorAll("h3,label.f,.colh>span:first-child,.subtabs button,.kl,.colnav button").forEach(function(el){
+    if(el.querySelector(".qt")||el.closest(".task,.guide,.gl,.wbwrap"))return;var k=termFor(el.textContent);if(!k)return;
+    el.insertAdjacentHTML("beforeend",'<span class="qt" role="button" tabindex="0" data-a="tip" data-v="'+k+'" aria-label="What is '+esc(TERMS[k][0])+'?">?</span>')})}
+function closeTip(){var o=document.getElementById("tippop");if(o)o.remove()}
+function showTip(el,k){closeTip();var d=TERMS[k];if(!d)return;var pop=document.createElement("div");pop.id="tippop";pop.setAttribute("role","tooltip");
+  pop.innerHTML='<b>'+esc(d[0])+'</b><p>'+esc(d[1])+'</p>'+(d[2]?'<p class="tipx">💡 '+esc(d[2])+'</p>':'')+'<button class="tipmore" data-a="goto" data-v="guide" data-s="gloss">Open glossary →</button>';
+  pop.dataset.t=Date.now();document.body.appendChild(pop);var r=el.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;
+  var x=Math.max(8,Math.min(window.innerWidth-w-8,r.left+r.width/2-w/2)),y=r.bottom+8;if(y+h>window.innerHeight-8)y=Math.max(8,r.top-h-8);
+  pop.style.left=x+"px";pop.style.top=y+"px"}
+document.addEventListener("click",function(e){if(!e.target.closest("#tippop,.qt"))closeTip()},true);
+window.addEventListener("scroll",function(){var o=document.getElementById("tippop");if(o&&Date.now()-(+o.dataset.t||0)>400)closeTip()},true);
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeTip();if((e.key==="Enter"||e.key===" ")&&e.target.classList&&e.target.classList.contains("qt")){e.preventDefault();e.target.click()}});
+
 var GUIDE=[
 ["rhythm","How we work: the weekly rhythm",'<p>A light, repeatable routine beats a perfect plan.</p><ul><li><b>Monday, 20 min:</b> sprint planning. Agree on one sprint goal, then pull tasks from the backlog up to your average velocity, Musts first.</li><li><b>Every day, 2 min:</b> post a standup (done · today · blockers) and move your cards.</li><li><b>Friday, 15 min:</b> open Coach, fix the red items, copy the status report and send it to whoever needs it.</li><li><b>End of sprint, 20 min:</b> close the sprint, run a retro, and assign owners to the action items.</li></ul>'],
 ["charter","Charter & SMART goals",'<p>The charter is a one-page agreement on <b>why</b>, <b>what</b>, <b>who decides</b>, and <b>what "done" means</b>. It ends scope arguments before they start.</p><ul><li>A SMART goal has a number and a date.</li><li>Write what is <b>out of scope</b>. That\'s your shield against scope creep.</li><li>Success criteria must be observable: "both of us rate it 4/5", not "it goes well".</li></ul><div class="ex">Weak: "Prepare for interviews."<br>SMART: "Complete 8 mock interviews and 40 practice problems by Dec 15."</div><p>Scope, time and cost are linked. When someone adds scope, say what moves: the date, the budget, or other scope.</p>'],
@@ -867,7 +945,7 @@ function teamModal(){var p=P();var owner=S.members.some(function(m){return m.id=
 function menuModal(){var p=P();var owner=p&&S.members.some(function(m){return m.id===S.user.id&&m.role==="owner"});
   modal('<div class="mh"><h3>'+esc(S.user.name||S.user.email)+'</h3><button class="x" data-a="close">×</button></div><p class="small muted">'+esc(S.user.email)+(DB.kind==="demo"?" · demo mode":"")+'</p>'+
   '<label class="f">Morning notification</label>'+(hasNative()?(function(){var mc=morningCfg();return'<div class="mnrow"><label class="switch"><input type="checkbox" id="mnOn"'+(mc.on?" checked":"")+'><span></span></label><div class="grow"><b>Daily brief</b><div class="small muted">Due today, overdue, reviews and blockers</div></div><input class="i" type="time" id="mnTime" value="'+pad(mc.h)+':'+pad(mc.m)+'" style="width:118px"></div>'+(mc.on&&!mc.perm?'<div class="tip warnbox small">Notifications are blocked for Tandem. Allow them in Android Settings → Apps → Tandem → Notifications.</div>':'')+'<div class="row" style="margin-top:6px"><button class="btn ghost small" data-a="mnTest">Send a test now</button><button class="btn ghost small" data-a="showBrief">Show today\'s brief</button></div>'})():'<div class="small muted">Install the Tandem Android app to get a notification every morning. Here, a Morning brief card appears on the board the first time you open Tandem each day.</div><button class="btn ghost small" style="margin-top:6px" data-a="showBrief">Show today\'s brief</button>')+'<div style="height:8px"></div>'+
-  '<label class="f">Theme</label><div class="themepick">'+Object.keys(THEMES).map(function(k){return'<button class="tp'+(k===theme?" on":"")+'" data-a="theme" data-v="'+k+'" data-t="'+k+'"><span class="tpl">'+MASCOT[k]+'</span>'+THEMES[k].label+'</button>'}).join("")+'</div><div style="height:12px"></div>'+
+  '<label class="f">Theme</label><div class="themepick">'+Object.keys(THEMES).map(function(k){return'<button class="tp'+(k===theme?" on":"")+'" data-a="theme" data-v="'+k+'" data-t="'+k+'"><span class="tpl">'+MASCOT[k]+'</span>'+THEMES[k].label+'</button>'}).join("")+'</div><label class="f">Help</label><button class="btn ghost" style="width:100%" data-a="tipsToggle">'+(tipsOn()?'Hide':'Show')+' term help (?)</button><div style="height:12px"></div>'+
   '<div style="display:grid;gap:8px"><button class="btn ghost" data-a="newProject">+ New project</button>'+(p?'<button class="btn ghost" data-a="team">Team & invites</button><button class="btn ghost" data-a="exportProject">Copy project data (JSON backup)</button>':'')+(DB.kind==="supabase"?'<button class="btn ghost" data-a="shareConn">Share connection code</button>':'')+(window.AndroidBridge&&AndroidBridge.setAppUrl?'<button class="btn ghost" data-a="resetAppUrl">Change Tandem website</button>':'')+(appNative()?'<button class="btn ghost" data-a="apkCheck">'+(S.apkLatest&&S.apkLatest.code>appNative().code?'📲 Update app to '+esc(S.apkLatest.version):'App version '+esc(appNative().version)+' · Check for updates')+'</button>':'')+
   (owner?'<button class="btn ghost" data-a="deleteProject" style="color:var(--bad)">Delete this project</button>':'')+'<button class="btn ghost" data-a="signout">Sign out</button>'+(DB.kind==="demo"?'<button class="btn ghost" data-a="resetDemo">Reset demo data</button>':'')+'<button class="btn ghost" data-a="disconnect">'+(DB.kind==="demo"?"Leave demo":"Disconnect from this Supabase")+'</button></div>')}
 
@@ -877,10 +955,12 @@ document.addEventListener("click",async function(e){
   if(a==="closeScrim"){if(e.target===el)closeModal();return}
   if(el.tagName==="SELECT"||(el.tagName==="INPUT"&&el.type!=="checkbox"))return;
   if(el.tagName==="A")e.preventDefault();
+  if(a==="tip"){e.stopPropagation();e.preventDefault();var o=document.getElementById("tippop");if(o&&o.dataset.k===v){closeTip();return}showTip(el,v);var np=document.getElementById("tippop");if(np)np.dataset.k=v;return}
+  if(a==="tipsToggle"){lsSet("pmhub.tips",tipsOn()?"off":"on");closeModal();S.lastKey=null;render();toast(tipsOn()?"Term help on":"Term help off");return}
   switch(a){
   case"close":closeModal();break;
   case"tab":if(S.tab==="ideas"&&v!=="ideas")wbLeave();S.tab=v;lsSet("pmhub.tab",v);render();window.scrollTo(0,0);break;
-  case"goto":closeModal();S.tab=v;if(el.dataset.s)S.sub[v]=el.dataset.s;render();window.scrollTo(0,0);if(v==="guide"){var g=document.getElementById("g-"+el.dataset.s);if(g)g.scrollIntoView()}break;
+  case"goto":closeTip();closeModal();S.tab=v;if(el.dataset.s)S.sub[v]=el.dataset.s;render();window.scrollTo(0,0);if(v==="guide"){var g=document.getElementById("g-"+el.dataset.s);if(g)g.scrollIntoView()}break;
   case"sub":S.sub[el.dataset.k]=v;if(el.dataset.k==="auth")renderAuth();else render();break;
   case"connect":{var code=document.getElementById("ccode").value.trim(),u=document.getElementById("curl").value.trim(),k=document.getElementById("ckey").value.trim();var err=document.getElementById("cerr");
     if(code){try{var o=JSON.parse(atob(code.replace(/^TANDEM:/,"")));u=o.u;k=o.k;if(o.a&&window.AndroidBridge&&AndroidBridge.setAppUrl){AndroidBridge.setAppUrl(o.a);return}}catch(x){err.textContent="That connection code doesn\'t look right.";return}}
@@ -974,7 +1054,7 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 1000px)","(max-width: 699px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1308";
+var APP_VERSION="2026.11.04-1311";
 function appNative(){try{if(!window.AndroidBridge)return null;if(!AndroidBridge.appInfo)return{version:"1.0",code:1};var i=JSON.parse(AndroidBridge.appInfo());if(!i.code){var p=String(i.version||"2.0").split(".");i.code=p[0]==="2"?6+(+p[1]||0):1}return i}catch(e){return{version:"?",code:1}}}
 function checkApk(j){var a=j&&j.android,me=appNative();if(!a||!me||!(a.code>me.code))return;S.apkLatest=a;if(lsGet("pmhub.apkLater")===String(a.code)+"|"+today()||document.getElementById("apkbar"))return;
   var d=document.createElement("div");d.className="updbar apk";d.id="apkbar";d.innerHTML='<span>📲 <b>Tandem '+esc(a.version)+'</b> is available'+(a.notes?'<br><span class="small" style="opacity:.8">'+esc(a.notes)+'</span>':'')+'</span><button class="btn small" id="apkgo">Update</button><button class="x" id="apkx" aria-label="Later" style="color:inherit">×</button>';document.body.appendChild(d);

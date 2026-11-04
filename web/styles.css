@@ -721,3 +721,19 @@ html,body{min-height:100%}
 [data-theme=pro] .btn:active,[data-theme=pro] .chip:active,[data-theme=pro] .task:active,[data-theme=pro] .tp:active{transform:none}
 [data-theme=pro] .task.pop,[data-theme=pro] .task.glow{animation:none}
 [data-theme=pro] .tp:hover,[data-theme=pro] .tmini:hover{transform:none}
+
+/* ===== term help ===== */
+.qt{display:inline-grid;place-items:center;width:16px;height:16px;margin-left:6px;border-radius:50%;font:700 10px/1 "Jakarta",system-ui,sans-serif;
+  color:var(--muted);border:1.5px solid color-mix(in srgb,var(--muted) 55%,transparent);vertical-align:2px;cursor:help;flex:none;
+  text-transform:none;letter-spacing:0;opacity:.75;transition:opacity .15s,color .15s,border-color .15s;-webkit-tap-highlight-color:transparent;position:relative}
+.qt::after{content:"";position:absolute;inset:-10px}
+.qt:hover,.qt:focus-visible{opacity:1;color:var(--brand2);border-color:var(--brand2);outline:none}
+.subtabs button.on .qt,.colnav button.on .qt,.chip.on .qt{color:inherit;border-color:currentColor}
+#tippop{position:fixed;z-index:200;max-width:300px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;
+  padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:.88rem;line-height:1.45;animation:tipIn .14s ease-out}
+#tippop b{display:block;font-size:.95rem;margin-bottom:4px}
+#tippop p{margin:0 0 6px}
+#tippop .tipx{color:var(--muted);font-size:.83rem}
+#tippop .tipmore{background:none;border:0;padding:2px 0 0;color:var(--brand2);font-weight:600;font-size:.82rem;cursor:pointer}
+@keyframes tipIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+[data-theme=pro] #tippop{border-radius:8px}
