@@ -1013,3 +1013,31 @@ html,body{overflow-x:clip}
   header.top .iconbtn{color:var(--ink)}
   header.top .bellcount{box-shadow:none}
 }
+/* project icons */
+.plogo{border:0;cursor:pointer;padding:0;color:#fff;font-size:20px;line-height:1}
+.plogo.has{background:var(--surface2)}
+@media (max-width:699px){header.top .plogo.has{background:rgba(255,255,255,.16)}}
+.pdot.pemoji,.sitem .pdot.pemoji{background:none!important;width:auto;height:auto;font-size:16px;line-height:1;border-radius:0;box-shadow:none}
+@media (min-width:700px) and (max-width:1099px){.sitem .pdot.pemoji{font-size:22px}}
+.h1icon{border:0;background:none;font-size:inherit;cursor:pointer;padding:0 10px 0 0;line-height:1;vertical-align:-2px}
+.iconpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;margin:8px 0 4px}
+.ipk{height:44px;border:1px solid var(--line);background:var(--surface);border-radius:12px;font-size:1.35rem;cursor:pointer;line-height:1}
+.ipk.on{border-color:var(--brand2);background:color-mix(in srgb,var(--brand2) 14%,var(--surface));box-shadow:inset 0 0 0 2px var(--brand2)}
+.ipk.none{font-size:.95rem;color:var(--muted)}
+/* Dashboard day tile */
+.daytile{background:linear-gradient(135deg,var(--brand),color-mix(in srgb,var(--brand2) 75%,var(--brand)));color:#fff;border:0;padding:20px 22px;margin-bottom:14px;box-shadow:0 10px 26px color-mix(in srgb,var(--brand) 30%,transparent)}
+.dt-top{display:flex;gap:14px;align-items:flex-start;justify-content:space-between}
+.dt-txt{min-width:0}
+.dt-date{font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.8}
+.dt-greet{font:700 1.9rem/1.15 "Fraunces",Georgia,serif;margin:4px 0 6px;color:#fff}
+.dt-sum{margin:0;font-size:.98rem;opacity:.92}
+.dt-ico{font-size:2.6rem;line-height:1;flex:none}
+.dt-list{list-style:none;margin:14px 0 0;padding:12px 14px;background:rgba(255,255,255,.12);border-radius:14px;display:grid;gap:7px;font-size:.92rem}
+.dt-list a{color:#fff;text-decoration:underline;text-underline-offset:2px}
+.dt-list li.bad b{color:#ffd2d2}
+.dt-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.daytile .dt-btn{background:#fff;color:var(--brand);border:0}
+.daytile .dt-ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.dt-pill{display:inline-flex;align-items:center;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.18);font-size:.85rem;font-weight:600}
+@media (max-width:699px){.daytile{padding:16px;border-radius:18px}.dt-greet{font-size:1.5rem}.dt-ico{font-size:2.1rem}.dt-list{font-size:.88rem}}
+@media (prefers-color-scheme:dark){.daytile{background:linear-gradient(135deg,var(--surface2),color-mix(in srgb,var(--brand2) 45%,var(--surface2)));color:var(--ink);box-shadow:none;border:1px solid var(--line)}.dt-greet{color:var(--ink)}.dt-list a{color:var(--ink)}.daytile .dt-btn{background:var(--brand2);color:#fff}.daytile .dt-ghost{color:var(--ink);border-color:var(--line)}}
