@@ -1097,10 +1097,11 @@ function settingsModal(){S.inSettings=true;var nat=appNative();
   '<div class="setsec" style="border:0"><button class="btn ghost" style="width:100%" data-a="signout">Sign out</button></div>',function(){},{drawer:true})}
 function settingsCheck(btn){var nat=appNative();if(nat&&S.apkLatest&&S.apkLatest.code>nat.code){installApk(S.apkLatest);return}
   if(btn){btn.disabled=true;btn.textContent="Checking…"}
-  fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){
+  fetch(verUrl(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){
     if(btn){btn.disabled=false;btn.textContent="Check for updates"}
     if(!j){toast("Couldn't check right now");return}checkApk(j);
     if(nat&&j.android&&j.android.code>nat.code){toast("New app version "+j.android.version+" available");settingsModal();return}
+    if(j.v&&j.v!==APP_VERSION&&location.protocol==="file:"&&window.AndroidBridge&&AndroidBridge.setAppUrl){confirmBox("This app is running its built-in copy, so it can't update itself. Switch to the live Tandem website to always get the newest version? You may need to sign in again.",function(){AndroidBridge.setAppUrl(LIVE_SITE.replace(/\/$/,""))},"Switch");return}
     if(j.v&&j.v!==APP_VERSION){toast("Updating to the latest version…");setTimeout(function(){location.reload()},600);return}
     toast("You're on the latest version ✓")}).catch(function(){if(btn){btn.disabled=false;btn.textContent="Check for updates"}toast("Couldn't check right now")})}
 function menuModal(){var p=P();var owner=p&&S.members.some(function(m){return m.id===S.user.id&&m.role==="owner"});
@@ -1126,7 +1127,7 @@ document.addEventListener("click",async function(e){
     if(!/^https:\/\/.+/.test(u)||k.length<20){err.textContent="Enter the Supabase URL (https://…) and the anon key.";return}
     conn={url:u.replace(/\/+$/,""),key:k};lsSet("pmhub.url",conn.url);lsSet("pmhub.key",conn.key);mode="supabase";lsSet("pmhub.mode",mode);boot();break}
   case"setAppUrl":{var au=document.getElementById("appurl").value.trim().replace(/\/+$/,"");if(au&&!/^https?:\/\//.test(au))au="https://"+au;if(!/^https:\/\/[^\s.]+\.[^\s]+$/.test(au)){document.getElementById("aperr").textContent="Enter your site address, like tandem-xyz.vercel.app";return}AndroidBridge.setAppUrl(au);break}
-  case"apkCheck":closeModal();if(S.apkLatest&&S.apkLatest.code>appNative().code)installApk(S.apkLatest);else{fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){if(j.android&&j.android.code>appNative().code){lsSet("pmhub.apkLater",null);checkApk(j)}else toast("You have the latest app ("+appNative().version+")")}).catch(function(){toast("Couldn't check for updates")})}break;
+  case"apkCheck":closeModal();if(S.apkLatest&&S.apkLatest.code>appNative().code)installApk(S.apkLatest);else{fetch(verUrl(),{cache:"no-store"}).then(function(r){return r.json()}).then(function(j){if(j.android&&j.android.code>appNative().code){lsSet("pmhub.apkLater",null);checkApk(j)}else toast("You have the latest app ("+appNative().version+")")}).catch(function(){toast("Couldn't check for updates")})}break;
   case"resetAppUrl":closeModal();confirmBox("Switch to a different Tandem website? You'll pick it on the next screen.",function(){AndroidBridge.setAppUrl("")},"Switch");break;
   case"demo":mode="demo";lsSet("pmhub.mode","demo");boot();break;
   case"disconnect":closeModal();try{if(DB)await DB.signOut()}catch(x){}mode="";lsSet("pmhub.mode",null);if(!cfg.supabaseUrl){lsSet("pmhub.url",null);lsSet("pmhub.key",null);conn={url:"",key:""}}S.user=null;S.projects=[];S.d=null;renderConnect();break;
@@ -1228,14 +1229,18 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 700px)","(max-width: 699px)","(min-width: 1100px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1441";
+var APP_VERSION="2026.11.04-1455";
+/* The Android app may run its bundled copy (file://), which cannot fetch relative URLs: always ask the live site. */
+var LIVE_SITE="https://tandem-lake-psi.vercel.app/";
+function updBase(){return location.protocol==="file:"?LIVE_SITE:location.href}
+function verUrl(){return new URL("version.json?t="+Date.now(),updBase()).href}
 function appNative(){try{if(!window.AndroidBridge)return null;if(!AndroidBridge.appInfo)return{version:"1.0",code:1};var i=JSON.parse(AndroidBridge.appInfo());if(!i.code){var p=String(i.version||"2.0").split(".");i.code=p[0]==="2"?6+(+p[1]||0):1}return i}catch(e){return{version:"?",code:1}}}
 function checkApk(j){var a=j&&j.android,me=appNative();if(!a||!me||!(a.code>me.code))return;S.apkLatest=a;if(lsGet("pmhub.apkLater")===String(a.code)+"|"+today()||document.getElementById("apkbar"))return;
   var d=document.createElement("div");d.className="updbar apk";d.id="apkbar";d.innerHTML='<span>📲 <b>Tandem '+esc(a.version)+'</b> is available'+(a.notes?'<br><span class="small" style="opacity:.8">'+esc(a.notes)+'</span>':'')+'</span><button class="btn small" id="apkgo">Update</button><button class="x" id="apkx" aria-label="Later" style="color:inherit">×</button>';document.body.appendChild(d);
   d.querySelector("#apkgo").onclick=function(){installApk(a);d.remove()};d.querySelector("#apkx").onclick=function(){lsSet("pmhub.apkLater",String(a.code)+"|"+today());d.remove()}}
-function installApk(a){var url=new URL(a.url,location.href).href;try{if(window.AndroidBridge&&AndroidBridge.installUpdate&&AndroidBridge.installUpdate(url)){toast("Downloading the update… Android will ask you to install it.");return}}catch(e){}try{AndroidBridge.openExternal(url);toast("Opening the download in Chrome. Tap the file when it finishes to install.")}catch(e){location.href=url}}
-window.TandemUpdateFailed=function(){toast("Couldn't open the installer. Opening the download in Chrome instead.");if(S.apkLatest)try{AndroidBridge.openExternal(new URL(S.apkLatest.url,location.href).href)}catch(e){}};
-function checkUpdate(){if(location.protocol==="file:"||!window.fetch)return;fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){checkApk(j);if(!j||!j.v||j.v===APP_VERSION)return;
+function installApk(a){var url=new URL(a.url,updBase()).href;try{if(window.AndroidBridge&&AndroidBridge.installUpdate&&AndroidBridge.installUpdate(url)){toast("Downloading the update… Android will ask you to install it.");return}}catch(e){}try{AndroidBridge.openExternal(url);toast("Opening the download in Chrome. Tap the file when it finishes to install.")}catch(e){location.href=url}}
+window.TandemUpdateFailed=function(){toast("Couldn't open the installer. Opening the download in Chrome instead.");if(S.apkLatest)try{AndroidBridge.openExternal(new URL(S.apkLatest.url,updBase()).href)}catch(e){}};
+function checkUpdate(){if(!window.fetch)return;fetch(verUrl(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){checkApk(j);if(!j||!j.v||j.v===APP_VERSION||location.protocol==="file:")return;
   var busy=document.getElementById("layer").innerHTML||S.wbBusy||(document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName));
   if(!busy&&document.visibilityState==="visible"&&S.updateSeen!==j.v){S.updateSeen=j.v;var d=document.createElement("div");d.className="updbar";d.innerHTML='✨ A new version of Tandem is ready. <button class="btn small">Update now</button>';d.querySelector("button").onclick=function(){location.reload()};document.body.appendChild(d)}
   if(document.visibilityState==="hidden")S.reloadOnShow=true}).catch(function(){})}
