@@ -934,3 +934,10 @@ html,body{overflow-x:clip}
 .wbsel button.on{background:var(--infobg);color:var(--brand2)}
 .wbfs{display:inline-flex}.wbfs button:nth-child(1){font-size:.72rem}.wbfs button:nth-child(3){font-size:1.05rem}
 .wbzoom .wbh[data-wb=snap]{font-weight:800}
+/* Phone kanban (S24 FE, folded Fold 8): one-line column tabs; every column, including Done, snaps to the same left edge */
+@media (max-width:699px){
+  .colnav{margin:0 -12px 10px;padding:0 12px 2px;scroll-padding-inline:12px}
+  .colnav button{flex:0 0 auto;white-space:nowrap;padding:7px 11px;gap:6px;font-size:.8rem}
+  .colnav button .n{padding:0 6px}
+  .board.hscroll{grid-auto-columns:84vw;padding-right:calc(16vw - 12px)}
+}
