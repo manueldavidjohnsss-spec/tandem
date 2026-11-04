@@ -136,6 +136,35 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public String notifyToken() { return Feed.token(MainActivity.this); }
+
+        @JavascriptInterface
+        public void notifyRegister(String url, String key) {
+            if (url != null && !url.isEmpty()) askPermission();
+            Feed.register(MainActivity.this, url, key);
+        }
+
+        @JavascriptInterface
+        public void notifyConfig(String json) {
+            try { org.json.JSONObject o = new org.json.JSONObject(json); Morning.prefs(MainActivity.this).edit().putString("nmute", o.optJSONObject("mute") == null ? "{}" : o.optJSONObject("mute").toString()).apply(); } catch (Exception e) { }
+        }
+
+        @JavascriptInterface
+        public String notifyStatus() {
+            boolean perm = Build.VERSION.SDK_INT < 33 || checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+            return "{\"perm\":" + perm + ",\"registered\":" + Feed.registered(MainActivity.this) + "}";
+        }
+
+        @JavascriptInterface
+        public void notifyPerm() { askPermission(); }
+
+        @JavascriptInterface
+        public void notifyTest() {
+            askPermission();
+            Feed.show(MainActivity.this, "test-" + System.currentTimeMillis(), "🔔 Tandem alerts are working", "Mentions, assignments, reviews and due dates will appear like this, even when the app is closed.", "", "");
+        }
+
+        @JavascriptInterface
         public void morningTest() {
             askPermission();
             Morning.show(MainActivity.this);
@@ -204,12 +233,15 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 pageReady = true;
                 if (pendingCallback != null) { String c = pendingCallback; pendingCallback = null; deliver(c); }
+                deliverOpen();
             }
         });
         web.addJavascriptInterface(new Bridge(), "AndroidBridge");
         setContentView(web);
         Morning.ensureChannel(this);
         Morning.schedule(this);
+        Feed.schedule(this);
+        takeOpen(getIntent());
 
         if (getIntent() != null && getIntent().getData() != null) pendingCallback = getIntent().getData().toString();
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
@@ -221,6 +253,32 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (intent != null && intent.getData() != null) handleCallback(intent.getData().toString());
+        if (takeOpen(intent) && pageReady) deliverOpen();
+    }
+
+    private String openP = null, openT = null;
+
+    /** A notification was tapped: remember which task to open. */
+    private boolean takeOpen(Intent i) {
+        if (i == null || !i.hasExtra("open_project")) return false;
+        openP = i.getStringExtra("open_project"); openT = i.getStringExtra("open_task");
+        i.removeExtra("open_project"); i.removeExtra("open_task");
+        return true;
+    }
+
+    private void deliverOpen() {
+        if (openP == null) return;
+        final String p = openP.replaceAll("[^0-9a-fA-F-]", ""), t = (openT == null ? "" : openT).replaceAll("[^0-9a-fA-F-]", "");
+        openP = null; openT = null;
+        web.post(new Runnable() { public void run() {
+            web.evaluateJavascript("(function(){var n=0;(function go(){if(window.TandemOpen){TandemOpen('" + p + "','" + t + "')}else if(n++<60){setTimeout(go,250)}})()})()", null);
+        }});
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (pageReady) web.evaluateJavascript("window.loadNotifsNow&&loadNotifsNow()", null);
     }
 
     private void handleCallback(String url) {

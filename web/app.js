@@ -33,7 +33,7 @@ var DB=null;
 function SupabaseDB(url,key){
   var sb=window.supabase.createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:"pkce"}});
   window.TandemAuthCallback=async function(link){try{var u=new URL(link.replace(/^ph\.tandem:\/\//,"https://cb/"));var code=u.searchParams.get("code"),err=u.searchParams.get("error_description");if(err){toast(err);return}if(code){var r=await sb.auth.exchangeCodeForSession(code);if(r.error)throw r.error;await refreshSession();toast("Signed in with Google")}}catch(e){toast("⚠ Google sign-in failed: "+e.message)}};
-  var chan=null;
+  var chan=null,nchan=null;
   function ok(r){if(r.error)throw new Error(r.error.message);return r.data}
   return{
     kind:"supabase",
@@ -63,6 +63,13 @@ function SupabaseDB(url,key){
       if(r.error&&/mentions/.test(r.error.message)){delete row.mentions;S.noMentionCol=true;r=await sb.from("task_comments").insert(row)}ok(r)},
     updComment:async function(id,body,mentions){var p={body:body,mentions:mentions||[],edited_at:new Date().toISOString()};var r=await sb.from("task_comments").update(p).eq("id",id).select("id");
       if(r.error&&/mentions|edited_at/.test(r.error.message)){r=await sb.from("task_comments").update({body:body}).eq("id",id).select("id")}ok(r);if(!r.data||!r.data.length)throw new Error("Couldn't save the edit (run the latest database update)")},
+    notifs:async function(){var r=await sb.from("notifications").select("*").order("created_at",{ascending:false}).limit(60);if(r.error){if(/notifications|relation|schema cache/i.test(r.error.message))return null;throw new Error(r.error.message)}return r.data||[]},
+    notifRead:async function(ids){if(!ids.length)return;await sb.from("notifications").update({read_at:new Date().toISOString()}).in("id",ids).is("read_at",null)},
+    notifAllRead:async function(){await sb.from("notifications").update({read_at:new Date().toISOString()}).is("read_at",null)},
+    dueReminders:async function(){var r=await sb.rpc("my_due_reminders");return r.error?null:(r.data||[])},
+    registerDevice:async function(tok){var r=await sb.rpc("register_device",{p_token:tok});if(r.error)throw new Error(r.error.message)},
+    conn:function(){return{url:url,key:key}},
+    watchNotifs:function(uid,cb){if(nchan){sb.removeChannel(nchan);nchan=null}if(!uid)return;nchan=sb.channel("n-"+uid).on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications",filter:"user_id=eq."+uid},function(pl){cb(pl.new)}).subscribe()},
     mentionsFor:async function(uid){var r=await sb.from("task_comments").select("id,project_id,task_id,user_id,body,created_at").contains("mentions",[uid]).order("created_at",{ascending:false}).limit(40);if(r.error)return[];var cs=r.data||[];if(!cs.length)return[];
       var tids=cs.map(function(c){return c.task_id}).filter(function(v,i,a){return a.indexOf(v)===i}),uids=cs.map(function(c){return c.user_id}).filter(function(v,i,a){return a.indexOf(v)===i});
       var ts=(await sb.from("tasks").select("id,title").in("id",tids)).data||[],ps=(await sb.from("profiles").select("id,name,email").in("id",uids)).data||[];
@@ -163,6 +170,7 @@ async function refreshSession(){
   var u=null;try{u=await DB.session()}catch(e){}
   if(!u&&window.PMHUB_DEMO_ONLY){await DB.signIn();u=await DB.session()}
   var changed=(u&&u.id)!==(S.user&&S.user.id);S.user=u;
+  if(changed&&DB.watchNotifs){try{DB.watchNotifs(u?u.id:null,onLiveNotif)}catch(e){}}
   if(!u){renderAuth();return}
   if(changed||!S.projects.length)await loadProjects();
 }
@@ -787,16 +795,52 @@ function rtWire(root,onSubmit){var ed=root.querySelector(".rtin"),pop=root.query
   return{get:function(){var h=rtSanitize(ed.innerHTML.replace(/&nbsp;/g," "));return h},clear:function(){ed.innerHTML=""},focus:function(){ed.focus()},el:ed}}
 function commentCount(tid){return(D().task_comments||[]).filter(function(c){return c.task_id===tid}).length}
 
-/* ---------- Notifications (mentions) ---------- */
-var NOTIF={list:[],seen:lsGet("pmhub.notifSeen")||""};
-async function loadNotifs(){if(!S.user||!DB||!DB.mentionsFor)return;try{NOTIF.list=await DB.mentionsFor(S.user.id)}catch(e){NOTIF.list=[]}
-  var unread=NOTIF.list.filter(function(n){return n.created_at>NOTIF.seen&&n.user_id!==S.user.id});
-  var b=document.querySelectorAll(".bellcount");b.forEach(function(x){x.textContent=unread.length||"";x.hidden=!unread.length});
-  if(unread.length&&S.lastNotifTop!==unread[0].id){if(S.lastNotifTop)toast("🔔 "+unread[0].author+" mentioned you in “"+unread[0].task_title+"”");S.lastNotifTop=unread[0].id}}
-function bellBtn(){var unread=NOTIF.list.filter(function(n){return n.created_at>NOTIF.seen&&n.user_id!==S.user.id}).length;return'<button class="iconbtn bell" data-a="notifs" aria-label="Notifications" title="Mentions">🔔<span class="bellcount"'+(unread?'':' hidden')+'>'+(unread||"")+'</span></button>'}
-function openNotifs(){var html=NOTIF.list.length?NOTIF.list.map(function(n){var unread=n.created_at>NOTIF.seen;var txt=(new DOMParser().parseFromString(rtRender(n.body),"text/html").body.textContent||"").slice(0,140);return'<button class="notif'+(unread?" unread":"")+'" data-a="openNotif" data-p="'+n.project_id+'" data-v="'+n.task_id+'"><span class="nd"></span><span class="grow"><b>'+esc(n.author)+'</b> mentioned you in <b>'+esc(n.task_title)+'</b><span class="small muted nb">'+esc(txt)+'</span><span class="small muted">'+ago(n.created_at)+'</span></span></button>'}).join(""):'<div class="empty small">No mentions yet. When someone types @'+esc((S.user.name||"you").split(" ")[0])+' in a comment, it shows up here.</div>';
-  modal('<div class="mh"><h3>Mentions</h3><button class="x" data-a="close">×</button></div>'+html,null,{drawer:true});NOTIF.seen=new Date().toISOString();lsSet("pmhub.notifSeen",NOTIF.seen);document.querySelectorAll(".bellcount").forEach(function(x){x.hidden=true})}
-setInterval(loadNotifs,60*1000);
+/* ---------- Notifications ---------- */
+var NKIND={mention:["@","Mentions","Someone @mentions you"],assigned:["👤","Assignments","A task is assigned to you"],review:["👀","Reviews","A task is ready for your review"],comment:["💬","Comments","Someone comments on your task"],blocker:["⛔","Blockers","A teammate posts a blocker"],done:["✅","Completed","A task you created is finished"],due:["📅","Due dates","Your tasks due tomorrow, today or overdue"]};
+var NOTIF={list:[],seen:lsGet("pmhub.notifSeen")||"",filter:"all",mode:"",dueSeen:{}};
+try{NOTIF.dueSeen=JSON.parse(lsGet("pmhub.dueSeen")||"{}")}catch(e){}
+function nMuted(){try{return JSON.parse(lsGet("pmhub.nmute")||"{}")}catch(e){return{}}}
+function dueLabel(st){return st==="overdue"?"Overdue":st==="today"?"Due today":"Due tomorrow"}
+function localDue(){var d=today(),t1=new Date(Date.now()+864e5).toISOString().slice(0,10);if(!S.d)return[];return D().tasks.filter(function(t){return t.assignee===S.user.id&&t.status!=="Done"&&t.due&&t.due<=t1}).map(function(t){return{task_id:t.id,project_id:t.project_id,title:t.title,due:t.due,state:t.due<d?"overdue":t.due===d?"today":"tomorrow"}})}
+function dueItems(rows){var d=today();return(rows||[]).map(function(x){var id="due-"+x.task_id+"-"+d;return{id:id,kind:"due",title:dueLabel(x.state)+": "+x.title,body:x.due?("Due "+fmtDate(x.due)):"",project_id:x.project_id,task_id:x.task_id,created_at:d+"T00:00:00Z",read:!!NOTIF.dueSeen[id],state:x.state}})}
+function nUnread(){var m=nMuted();return NOTIF.list.filter(function(n){return!n.read&&!m[n.kind]})}
+function nBadge(){var c=nUnread().length;document.querySelectorAll(".bellcount").forEach(function(x){x.textContent=c>99?"99+":(c||"");x.hidden=!c})}
+async function loadNotifs(){if(!S.user||!DB)return;var list=null;
+  if(DB.notifs){try{list=await DB.notifs()}catch(e){list=null}}
+  if(list){NOTIF.mode="full";list=list.map(function(n){return Object.assign({},n,{read:!!n.read_at})})}
+  else{NOTIF.mode="mentions";var ms=[];try{ms=DB.mentionsFor?await DB.mentionsFor(S.user.id):[]}catch(e){}
+    list=ms.filter(function(n){return n.user_id!==S.user.id}).map(function(n){return{id:n.id,kind:"mention",title:n.author+" mentioned you in “"+n.task_title+"”",body:(new DOMParser().parseFromString(rtRender(n.body),"text/html").body.textContent||"").slice(0,140),project_id:n.project_id,task_id:n.task_id,created_at:n.created_at,read:n.created_at<=NOTIF.seen}})}
+  var due=null;if(DB.dueReminders){try{due=await DB.dueReminders()}catch(e){}}if(!due)due=localDue();
+  NOTIF.list=dueItems(due).concat(list);nBadge();
+  var top=nUnread().filter(function(n){return n.kind!=="due"})[0];if(top&&S.lastNotifTop!==top.id){if(S.lastNotifTop)nAlert(top);S.lastNotifTop=top.id}
+  syncDevice()}
+function nAlert(n){if(nMuted()[n.kind])return;toast((NKIND[n.kind]||["🔔"])[0]+" "+n.title);buzz(15);
+  try{if(!hasNative()&&window.Notification&&Notification.permission==="granted"&&document.hidden){var x=new Notification(n.title,{body:n.body||"",icon:"icon.png",tag:n.id});x.onclick=function(){window.focus();openNotifItem(n.project_id,n.task_id);x.close()}}}catch(e){}}
+function onLiveNotif(row){if(!row||row.user_id!==S.user.id)return;var n=Object.assign({},row,{read:false});if(NOTIF.list.some(function(x){return x.id===n.id}))return;NOTIF.list.splice(NOTIF.list.filter(function(x){return x.kind==="due"}).length,0,n);S.lastNotifTop=n.id;nBadge();nAlert(n);if(document.getElementById("nlist"))drawNotifs()}
+function bellBtn(){var c=S.user?nUnread().length:0;return'<button class="iconbtn bell" data-a="notifs" aria-label="Notifications" title="Notifications">🔔<span class="bellcount"'+(c?'':' hidden')+'>'+(c||"")+'</span></button>'}
+function drawNotifs(){var box=document.getElementById("nlist");if(!box)return;var m=nMuted(),f=NOTIF.filter;
+  var xs=NOTIF.list.filter(function(n){return!m[n.kind]&&(f==="all"||(f==="unread"?!n.read:f==="due"?n.kind==="due":f==="mention"?n.kind==="mention":f==="work"?(n.kind==="assigned"||n.kind==="review"||n.kind==="done"||n.kind==="comment"||n.kind==="blocker"):true))});
+  box.innerHTML=xs.length?xs.map(function(n){return'<button class="notif k-'+n.kind+(n.read?"":" unread")+(n.state?" s-"+n.state:"")+'" data-a="openNotif" data-p="'+(n.project_id||"")+'" data-v="'+(n.task_id||"")+'" data-n="'+n.id+'"><span class="nic">'+(NKIND[n.kind]||["🔔"])[0]+'</span><span class="grow"><b>'+esc(n.title)+'</b>'+(n.body?'<span class="small muted nb">'+esc(n.body)+'</span>':'')+'<span class="small muted">'+(n.kind==="due"?"Today":ago(n.created_at))+'</span></span><span class="nd"></span></button>'}).join(""):'<div class="empty small">'+(f==="unread"?"You're all caught up ✓":"Nothing here yet. Mentions, assignments, reviews, blockers and due dates will show up here.")+'</div>';
+  document.querySelectorAll("[data-nf]").forEach(function(b){b.classList.toggle("on",b.dataset.nf===f)})}
+function openNotifs(){var unr=nUnread().length;
+  modal('<div class="mh"><h3>Notifications</h3><button class="x" data-a="close">×</button></div>'+
+  '<div class="row between" style="margin-bottom:8px;gap:8px;flex-wrap:nowrap"><div class="chips nchips">'+[["all","All"],["unread","Unread"],["mention","Mentions"],["work","Tasks"],["due","Due"]].map(function(c){return'<button class="chip" data-nf="'+c[0]+'">'+c[1]+'</button>'}).join("")+'</div>'+
+  '<button class="btn ghost small" id="nall"'+(unr?'':' disabled')+'>Mark all read</button></div>'+(NOTIF.mode==="mentions"&&DB.kind!=="demo"?'<div class="tip infobox small">Only mentions are shown. Run the notifications database update to get assignments, reviews, blockers and phone alerts.</div>':'')+
+  '<div id="nlist"></div><button class="btn ghost small" style="margin-top:10px" data-a="settings">⚙ Notification settings</button>',function(m){
+    m.querySelectorAll("[data-nf]").forEach(function(b){b.onclick=function(){NOTIF.filter=b.dataset.nf;drawNotifs()}});
+    m.querySelector("#nall").onclick=function(){markAllRead();this.disabled=true;drawNotifs()};drawNotifs()},{drawer:true});
+  NOTIF.seen=new Date().toISOString();lsSet("pmhub.notifSeen",NOTIF.seen);if(NOTIF.mode==="mentions"){NOTIF.list.forEach(function(n){if(n.kind==="mention")n.read=true})}}
+function markRead(id){var n=NOTIF.list.filter(function(x){return x.id===id})[0];if(!n||n.read)return;n.read=true;if(n.kind==="due"){NOTIF.dueSeen[id]=1;saveDueSeen()}else if(NOTIF.mode==="full"&&DB.notifRead)DB.notifRead([id]).catch(function(){});nBadge()}
+function markAllRead(){NOTIF.list.forEach(function(n){if(!n.read){n.read=true;if(n.kind==="due")NOTIF.dueSeen[n.id]=1}});saveDueSeen();if(NOTIF.mode==="full"&&DB.notifAllRead)DB.notifAllRead().catch(function(){});nBadge()}
+function saveDueSeen(){var d=today(),o={};for(var k in NOTIF.dueSeen)if(k.slice(-10)===d)o[k]=1;NOTIF.dueSeen=o;lsSet("pmhub.dueSeen",JSON.stringify(o))}
+function openNotifItem(pid,tid){var go=function(){S.tab=tid?"board":"sprint";if(!tid)S.sub.sprint="standup";S.lastKey=null;render();if(tid)setTimeout(function(){editTask(tid)},120)};if(pid&&pid!==S.cur&&S.projects.some(function(x){return x.id===pid})){S.cur=pid;lsSet("pmhub.cur",pid);S.d=null;loadProject().then(go)}else go()}
+window.TandemOpen=function(pid,tid){if(!S.user){setTimeout(function(){window.TandemOpen(pid,tid)},500);return}closeModal();openNotifItem(pid||"",tid||"")};
+/* phone delivery: the Android app polls notif_feed with its own private token */
+function syncDevice(){try{if(!window.AndroidBridge||!AndroidBridge.notifyToken||NOTIF.mode!=="full"||!DB.registerDevice)return;var tok=AndroidBridge.notifyToken();var c=DB.conn();var key=S.user.id+"|"+tok;
+  AndroidBridge.notifyConfig(JSON.stringify({mute:nMuted()}));
+  if(lsGet("pmhub.devReg")===key)return;DB.registerDevice(tok).then(function(){AndroidBridge.notifyRegister(c.url,c.key);lsSet("pmhub.devReg",key)}).catch(function(){})}catch(e){}}
+setInterval(loadNotifs,60*1000);window.loadNotifsNow=function(){if(S.user)loadNotifs()};
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&S.user)loadNotifs()});
 
 /* ---------- Quick assign ---------- */
 function quickAssign(tid){var t=taskById(tid);if(!t)return;modal('<div class="mh"><h3>Assign “'+esc(t.title)+'”</h3><button class="x" data-a="close">×</button></div><div class="alist">'+S.members.map(function(m){return'<button class="aopt'+(t.assignee===m.id?" on":"")+'" data-a="setAssignee" data-t="'+tid+'" data-v="'+m.id+'">'+avatar(m.id)+'<span class="grow"><b>'+esc(m.name)+(m.id===S.user.id?" (me)":"")+'</b><br><span class="small muted">'+D().tasks.filter(function(x){return x.assignee===m.id&&x.status!=="Done"}).length+' open tasks</span></span>'+(t.assignee===m.id?'✓':'')+'</button>'}).join("")+'<button class="aopt'+(!t.assignee?" on":"")+'" data-a="setAssignee" data-t="'+tid+'" data-v=""><span class="av" style="background:var(--muted)">–</span><span class="grow"><b>Unassigned</b></span>'+(!t.assignee?'✓':'')+'</button></div>')}
@@ -956,15 +1000,23 @@ function teamModal(){var p=P();var owner=S.members.some(function(m){return m.id=
   modal('<div class="mh"><h3>Team · '+esc(p.name)+'</h3><button class="x" data-a="close">×</button></div>'+S.members.map(function(m){return'<div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)"><span class="row" style="gap:8px">'+avatar(m.id)+'<span><b>'+esc(m.name)+'</b>'+(m.id===S.user.id?" (you)":"")+'<br><span class="small muted">'+esc(m.email)+' · '+m.role+'</span></span></span>'+(owner&&m.role!=="owner"?'<button class="btn ghost small" data-a="removeMember" data-v="'+m.id+'">Remove</button>':(!owner&&m.id===S.user.id?'<button class="btn ghost small" data-a="removeMember" data-v="'+m.id+'">Leave</button>':''))+'</div>'}).join("")+
   (owner?'<h3 style="margin-top:16px">Add a teammate</h3><p class="small muted">They need to create a Tandem account first (same Supabase connection), then add their email here.</p><div class="row"><input class="i" style="flex:1" id="memail" type="email" placeholder="bert@email.com"><button class="btn" data-a="addMember">Add</button></div>'+(DB.kind==="supabase"?'<div class="tip small" style="margin-top:10px">Send them the connection code from <b>Menu → Share connection</b> so their app points to your Supabase.</div>':'<div class="hint">Demo: bert@demo.local is a sample teammate.</div>'):''))}
 function morningHTML(){return (hasNative()?(function(){var mc=morningCfg();return'<div class="mnrow"><label class="switch"><input type="checkbox" id="mnOn"'+(mc.on?" checked":"")+'><span></span></label><div class="grow"><b>Daily brief</b><div class="small muted">Due today, overdue, reviews and blockers</div></div><input class="i" type="time" id="mnTime" value="'+pad(mc.h)+':'+pad(mc.m)+'" style="width:118px"></div>'+(mc.on&&!mc.perm?'<div class="tip warnbox small">Notifications are blocked for Tandem. Allow them in Android Settings → Apps → Tandem → Notifications.</div>':'')+'<div class="row" style="margin-top:6px"><button class="btn ghost small" data-a="mnTest">Send a test now</button><button class="btn ghost small" data-a="showBrief">Show today\'s brief</button></div>'})():'<div class="small muted">Install the Tandem Android app to get a notification every morning. Here, a Morning brief card appears on the board the first time you open Tandem each day.</div><button class="btn ghost small" style="margin-top:6px" data-a="showBrief">Show today\'s brief</button>')}
-var APP_RELEASE="2.4";
+var APP_RELEASE="2.5";
 function buildDate(v){var m=/^(\d{4})\.(\d\d)\.(\d\d)-(\d\d)(\d\d)$/.exec(v||"");if(!m)return"";var d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5]));return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+", "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}
+function notifSettingsHTML(){var m=nMuted(),nat=window.AndroidBridge&&AndroidBridge.notifyToken,st={};try{st=nat&&AndroidBridge.notifyStatus?JSON.parse(AndroidBridge.notifyStatus()):{}}catch(e){}
+  var delivery;
+  if(nat)delivery=st.perm===false?'<div class="tip warnbox small">Tandem can\'t show notifications. Allow them in Android Settings → Apps → Tandem → Notifications.</div><button class="btn ghost small" data-a="nPerm">Allow notifications</button>':'<div class="tip goodbox small">📲 Phone alerts are on. They arrive even when Tandem is closed (checked about every 15 minutes).</div><button class="btn ghost small" data-a="nTest">Send a test notification</button>';
+  else if(hasNative())delivery='<div class="tip infobox small">Update the Tandem app to get phone alerts while the app is closed.</div>';
+  else if(window.Notification)delivery=Notification.permission==="granted"?'<div class="tip goodbox small">🔔 Browser alerts are on while Tandem is open in a tab.</div>':Notification.permission==="denied"?'<div class="tip warnbox small">Your browser is blocking notifications for this site. Allow them in the site settings (🔒 in the address bar).</div>':'<button class="btn ghost small" data-a="webNotif">Turn on browser alerts</button>';
+  else delivery='';
+  return'<p class="small muted" style="margin:0 0 8px">Tell me when…</p><div class="nkinds">'+Object.keys(NKIND).map(function(k){return'<label class="nkrow"><span class="nic">'+NKIND[k][0]+'</span><span class="grow"><b>'+NKIND[k][1]+'</b><span class="small muted">'+NKIND[k][2]+'</span></span><span class="switch"><input type="checkbox" data-a="nkind" data-v="'+k+'"'+(m[k]?'':' checked')+'><span></span></span></label>'}).join("")+'</div>'+
+  (NOTIF.mode==="mentions"&&DB.kind!=="demo"?'<div class="tip infobox small">Your database needs the notifications update (supabase/notifications.sql) for assignments, reviews, blockers and phone alerts.</div>':'')+'<div style="margin-top:10px">'+delivery+'</div>'}
 function settingsModal(){S.inSettings=true;var nat=appNative();
   var row=function(k,v){return'<div class="setrow"><span class="muted">'+k+'</span><b>'+v+'</b></div>'};
   modal('<div class="mh"><h3>Settings</h3><button class="x" data-a="close">×</button></div>'+
   '<div class="setsec"><div class="slabel">Account</div><div class="row" style="gap:10px">'+avatar(S.user.id)+'<div><b>'+esc(S.user.name||S.user.email)+'</b><div class="small muted">'+esc(S.user.email)+(DB.kind==="demo"?" · demo mode":"")+'</div></div></div></div>'+
   '<div class="setsec"><div class="slabel">Appearance</div><div class="themepick">'+Object.keys(THEMES).map(function(k){return'<button class="tp'+(k===theme?" on":"")+'" data-a="theme" data-v="'+k+'" data-t="'+k+'"><span class="tpl">'+MASCOT[k]+'</span>'+THEMES[k].label+'</button>'}).join("")+'</div>'+
   '<div class="mnrow" style="margin-top:12px"><label class="switch"><input type="checkbox" data-a="tipsToggle"'+(tipsOn()?" checked":"")+'><span></span></label><div class="grow"><b>Term help</b><div class="small muted">Show a ? next to project-management terms</div></div></div></div>'+
-  '<div class="setsec"><div class="slabel">Notifications</div>'+morningHTML()+'</div>'+
+  '<div class="setsec"><div class="slabel">Notifications</div>'+notifSettingsHTML()+'<div class="slabel" style="margin:16px 0 8px">Morning brief</div>'+morningHTML()+'</div>'+
   '<div class="setsec"><div class="slabel">About</div><div class="setcard">'+row("Tandem version",APP_RELEASE)+row("Build",esc(APP_VERSION))+(buildDate(APP_VERSION)?row("Released",buildDate(APP_VERSION)):'')+(nat?row("Android app",esc(nat.version)+' <span class="muted small">(build '+nat.code+')</span>'):row("Platform",isDesk()?"Web · desktop":"Web"))+row("Data",DB.kind==="demo"?"Demo (this device)":"Supabase · synced")+'</div>'+
   '<button class="btn ghost" style="width:100%;margin-top:10px" data-a="settingsCheck">'+(nat&&S.apkLatest&&S.apkLatest.code>nat.code?'📲 Update app to '+esc(S.apkLatest.version):'Check for updates')+'</button></div>'+
   '<div class="setsec" style="border:0"><button class="btn ghost" style="width:100%" data-a="signout">Sign out</button></div>',function(){},{drawer:true})}
@@ -1008,11 +1060,15 @@ document.addEventListener("click",async function(e){
     try{if((S.sub.auth||"in")==="up"){var nm=document.getElementById("aname").value.trim();if(!nm)throw new Error("Enter your name");var hasSession=await DB.signUp(em,pw,nm);if(!hasSession){ae.style.color="var(--good)";ae.textContent="Account created. Check your email to confirm, then sign in.";S.sub.auth="in";el.disabled=false;return}}else await DB.signIn(em,pw);await refreshSession()}catch(x){ae.textContent=/fetch|network/i.test(x.message)?"Can't reach Supabase. Check your internet and the Supabase URL.":x.message;el.disabled=false}break}
   case"google":{el.disabled=true;try{await DB.signInGoogle()}catch(x){toast("⚠ "+x.message);el.disabled=false}if(window.AndroidBridge)setTimeout(function(){el.disabled=false},4000);break}
   case"forgot":{var em2=document.getElementById("aemail").value.trim();if(!em2){document.getElementById("aerr").textContent="Enter your email first.";return}try{await DB.resetPw(em2);toast("Password reset email sent")}catch(x){toast(x.message)}break}
-  case"signout":closeModal();await DB.signOut();S.user=null;S.projects=[];S.d=null;DB.subscribe(null);renderAuth();break;
+  case"signout":closeModal();try{DB.watchNotifs&&DB.watchNotifs(null)}catch(e){}lsSet("pmhub.devReg",null);try{window.AndroidBridge&&AndroidBridge.notifyRegister&&AndroidBridge.notifyRegister("","")}catch(e){}await DB.signOut();S.user=null;S.projects=[];S.d=null;DB.subscribe(null);renderAuth();break;
   case"resetDemo":closeModal();confirmBox("Erase demo data and start over?",function(){DB.reset();location.reload()});break;
   case"menu":menuModal();break;
   case"settings":settingsModal();break;
   case"settingsCheck":settingsCheck(el);break;
+  case"nkind":{var mm=nMuted();if(el.checked)delete mm[v];else mm[v]=1;lsSet("pmhub.nmute",JSON.stringify(mm));nBadge();try{if(window.AndroidBridge&&AndroidBridge.notifyConfig)AndroidBridge.notifyConfig(JSON.stringify({mute:mm}))}catch(e){}break}
+  case"webNotif":try{Notification.requestPermission().then(function(){settingsModal()})}catch(e){}break;
+  case"nPerm":try{AndroidBridge.notifyPerm()}catch(e){}setTimeout(settingsModal,1500);break;
+  case"nTest":try{AndroidBridge.notifyTest()}catch(e){}toast("Test sent. Check your notification shade");break;
   case"team":teamModal();break;
   case"addMember":{var me=document.getElementById("memail").value.trim();if(!me)return;try{var r=await DB.addMember(p.id,me);if(r==="not_found")toast("No account with that email yet. Ask them to sign up first.");else{toast("Added to "+p.name);await loadProject(true);teamModal()}}catch(x){toast("⚠ "+x.message)}break}
   case"removeMember":{var self=v===S.user.id;confirmBox(self?"Leave this project? You\'ll lose access.":"Remove "+mname(v)+" from this project?",async function(){try{await DB.removeMember(p.id,v);if(self)await loadProjects();else await loadProject(true)}catch(x){toast("⚠ "+x.message)}},self?"Leave":"Remove");break}
@@ -1064,7 +1120,7 @@ document.addEventListener("click",async function(e){
   case"cEditCancel":renderComments(openTaskId);break;
   case"cDel":confirmBox("Delete this comment?",async function(){try{await DB.del("task_comments",v)}catch(x){toast("⚠ "+x.message)}var t0=openTaskId;if(t0){editTask(t0)}else loadProject(true)},"Delete");break;
   case"notifs":openNotifs();break;
-  case"openNotif":{closeModal();var pid=el.dataset.p,tid=v;var go=function(){S.tab="board";S.lastKey=null;render();setTimeout(function(){editTask(tid)},120)};if(pid&&pid!==S.cur){S.cur=pid;lsSet("pmhub.cur",pid);S.d=null;loadProject().then(go)}else go();break}
+  case"openNotif":{closeModal();if(el.dataset.n)markRead(el.dataset.n);openNotifItem(el.dataset.p,v);break}
   case"quickAssign":e.stopPropagation();quickAssign(v);break;
   case"setAssignee":{closeModal();var tt=taskById(el.dataset.t);var nv=v||null;if(tt){tt.assignee=nv;S.justMoved=tt.id;render();S.justMoved=null;act(function(){return DB.upd("tasks",tt.id,{assignee:nv})},nv?"Assigned to "+mname(nv):"Unassigned")}break}
   case"addIn":S.newStatus=v;editTask("");break;
@@ -1088,7 +1144,7 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 1000px)","(max-width: 699px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1325";
+var APP_VERSION="2026.11.04-1333";
 function appNative(){try{if(!window.AndroidBridge)return null;if(!AndroidBridge.appInfo)return{version:"1.0",code:1};var i=JSON.parse(AndroidBridge.appInfo());if(!i.code){var p=String(i.version||"2.0").split(".");i.code=p[0]==="2"?6+(+p[1]||0):1}return i}catch(e){return{version:"?",code:1}}}
 function checkApk(j){var a=j&&j.android,me=appNative();if(!a||!me||!(a.code>me.code))return;S.apkLatest=a;if(lsGet("pmhub.apkLater")===String(a.code)+"|"+today()||document.getElementById("apkbar"))return;
   var d=document.createElement("div");d.className="updbar apk";d.id="apkbar";d.innerHTML='<span>📲 <b>Tandem '+esc(a.version)+'</b> is available'+(a.notes?'<br><span class="small" style="opacity:.8">'+esc(a.notes)+'</span>':'')+'</span><button class="btn small" id="apkgo">Update</button><button class="x" id="apkx" aria-label="Later" style="color:inherit">×</button>';document.body.appendChild(d);

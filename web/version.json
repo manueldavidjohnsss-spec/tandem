@@ -1,9 +1,9 @@
 {
- "v": "2026.11.04-1325",
+ "v": "2026.11.04-1333",
  "android": {
-  "version": "2.2",
-  "code": 9,
+  "version": "2.3",
+  "code": 10,
   "url": "downloads/Tandem.apk",
-  "notes": "Save boards as PNG to your phone, and in-app updates from now on."
+  "notes": "Phone alerts for mentions, assignments, reviews, comments, blockers and due dates, even when the app is closed."
  }
 }

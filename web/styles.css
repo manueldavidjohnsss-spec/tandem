@@ -747,3 +747,25 @@ html,body{min-height:100%}
 .setrow b{text-align:right;font-variant-numeric:tabular-nums}
 [data-theme=pro] .setcard{border-radius:8px}
 @media (max-width:440px){header.top .avatars{display:none}}
+/* ===== notifications v2 ===== */
+.goodbox{background:var(--goodbg)}.infobox{background:var(--infobg)}
+.notif{align-items:flex-start;border-radius:10px;padding:11px 8px;border-bottom:0;margin-bottom:2px}
+.notif:hover{background:var(--surface2)}
+.notif.unread{background:color-mix(in srgb,var(--brand2) 7%,transparent)}
+.notif .nd{order:3}
+.notif .grow b{font-weight:600;line-height:1.3}
+.notif.unread .grow b{font-weight:800}
+.nic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--surface2);flex:none;font-size:.95rem;font-weight:800;color:var(--brand2)}
+.k-mention .nic{background:var(--infobg)}.k-assigned .nic{background:var(--infobg)}.k-review .nic{background:var(--warnbg)}
+.k-blocker .nic,.s-overdue .nic{background:var(--badbg)}.k-done .nic{background:var(--goodbg)}.k-due .nic{background:var(--warnbg)}
+.s-overdue .grow b{color:var(--bad)}
+.nchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.nchips::-webkit-scrollbar{display:none}
+.nchips .chip{flex:none}
+.nchips .chip.on{background:var(--brand2);color:#fff;border-color:var(--brand2)}
+.nkinds{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.nkrow{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer}
+.nkrow+.nkrow{border-top:1px solid var(--line)}
+.nkrow .grow{display:flex;flex-direction:column}
+.nkrow .grow b{font-size:.92rem}
+[data-theme=pro] .nkinds{border-radius:8px}
