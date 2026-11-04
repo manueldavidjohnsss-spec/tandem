@@ -1,9 +1,9 @@
 {
- "v": "2026.11.04-1455",
+ "v": "2026.11.04-1459",
  "android": {
-  "version": "2.4",
-  "code": 11,
+  "version": "2.5",
+  "code": 12,
   "url": "downloads/Tandem.apk",
-  "notes": "Optimized for Galaxy Fold: folding and unfolding no longer reloads the app. Includes phone alerts."
+  "notes": "Opens your live Tandem site by default, so updates arrive automatically and Check for updates works."
  }
 }

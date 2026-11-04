@@ -1229,7 +1229,7 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 700px)","(max-width: 699px)","(min-width: 1100px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1455";
+var APP_VERSION="2026.11.04-1459";
 /* The Android app may run its bundled copy (file://), which cannot fetch relative URLs: always ask the live site. */
 var LIVE_SITE="https://tandem-lake-psi.vercel.app/";
 function updBase(){return location.protocol==="file:"?LIVE_SITE:location.href}
