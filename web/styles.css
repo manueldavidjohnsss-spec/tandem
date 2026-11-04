@@ -1041,3 +1041,5 @@ html,body{overflow-x:clip}
 .dt-pill{display:inline-flex;align-items:center;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.18);font-size:.85rem;font-weight:600}
 @media (max-width:699px){.daytile{padding:16px;border-radius:18px}.dt-greet{font-size:1.5rem}.dt-ico{font-size:2.1rem}.dt-list{font-size:.88rem}}
 @media (prefers-color-scheme:dark){.daytile{background:linear-gradient(135deg,var(--surface2),color-mix(in srgb,var(--brand2) 45%,var(--surface2)));color:var(--ink);box-shadow:none;border:1px solid var(--line)}.dt-greet{color:var(--ink)}.dt-list a{color:var(--ink)}.daytile .dt-btn{background:var(--brand2);color:#fff}.daytile .dt-ghost{color:var(--ink);border-color:var(--line)}}
+/* tablet icon rail: project emoji centered (hide the zero-size name that pushed it left) */
+@media (min-width:700px) and (max-width:1099px){.slist .sitem .ell{display:none}.slist .sitem .pdot.pemoji{font-size:24px;margin:0!important}}

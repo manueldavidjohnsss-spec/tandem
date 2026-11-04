@@ -392,7 +392,7 @@ function deskShell(p,body){var hr=new Date().getHours();var greet=(hr<12?"Good m
   var tabName=(TABS.filter(function(t){return t[0]===S.tab})[0]||["",""])[1];var b=p&&S.d?myBrief():null;
   var me=member(S.user.id)?avatar(S.user.id):'<span class="av" style="background:'+colorFor(S.user.id)+'">'+esc(initials(S.user.name||S.user.email))+'</span>';
   return'<div class="shell"><aside class="side"><div class="sbrand">'+logo()+'<div><div class="brand">Tandem</div><div class="sub">'+(DB.kind==="demo"?"Demo workspace":"Project hub")+'</div></div></div>'+
-  '<div class="slabel">Projects</div><div class="slist">'+S.projects.map(function(x){return'<button class="sitem'+(p&&x.id===p.id?" on":"")+'" data-a="pickProj" data-v="'+x.id+'" title="'+esc(x.name)+'">'+(projIcon(x)?'<span class="pdot pemoji">'+esc(projIcon(x))+'</span>':'<span class="pdot" style="background:'+colorFor(x.id)+'"></span>')+'<span class="ell">'+esc(x.name)+'</span></button>'}).join("")+'<button class="sitem muted" data-a="newProject"><span class="pdot plus">+</span>New project</button></div>'+
+  '<div class="slabel">Projects</div><div class="slist">'+S.projects.map(function(x){return'<button class="sitem'+(p&&x.id===p.id?" on":"")+'" data-a="pickProj" data-v="'+x.id+'" title="'+esc(x.name)+(p&&x.id===p.id?' · tap to change icon':'')+'">'+'<span class="pdot pemoji">'+esc(projIcon(x)||"📁")+'</span><span class="ell">'+esc(x.name)+'</span></button>'}).join("")+'<button class="sitem muted" data-a="newProject"><span class="pdot plus">+</span>New project</button></div>'+
   (p?'<div class="slabel">Views</div><nav class="slist">'+TABS.map(function(t,i){return'<button class="sitem'+(S.tab===t[0]?" on":"")+'" data-a="tab" data-v="'+t[0]+'">'+IC[t[0]]+'<span>'+t[1]+'</span><kbd>'+(i+1)+'</kbd></button>'}).join("")+'</nav>':'')+
   '<div class="sfoot"><div class="slabel" style="margin-top:0">Theme</div><div class="themes">'+Object.keys(THEMES).map(function(k){return'<button class="tmini'+(k===theme?" on":"")+'" data-a="theme" data-v="'+k+'" data-t="'+k+'" title="'+THEMES[k].label+' theme">'+MASCOT[k]+'</button>'}).join("")+'</div>'+
   '<button class="sitem" data-a="settings" style="margin:0 0 6px">'+IC.gear+'<span>Settings</span></button><button class="suser" data-a="menu" title="Account & project menu">'+me+'<span class="ell"><b>'+esc(S.user.name||"")+'</b><br><span class="small muted">'+esc(S.user.email)+'</span></span>'+IC.menu+'</button><div class="kbdhint"><kbd>N</kbd> new task · <kbd>/</kbd> search · <kbd>1–7</kbd> views</div></div></aside>'+
@@ -1225,7 +1225,7 @@ document.addEventListener("click",async function(e){
   case"addDecision":{var dd=document.getElementById("dd").value.trim();if(!dd){toast("What was decided?");return}act(function(){return DB.ins("decisions",{project_id:p.id,decision:dd,why:document.getElementById("dw").value.trim(),alternatives:document.getElementById("da").value.trim(),decided_by:document.getElementById("db").value.trim()})},"Decision logged");break}
   case"saveAsks":{var as2=document.getElementById("asks").value;await act(function(){return DB.updateProject(p.id,{asks:as2})},"Saved");S.projects=await DB.projects();break}
   case"copyReport2":{copyText(reportText()).then(function(ok){toast(ok?"Report copied. Paste it into email or chat.":"Couldn't copy")});break}
-  case"pickProj":S.cur=v;lsSet("pmhub.cur",S.cur);S.d=null;S.q="";loadProject();break;
+  case"pickProj":if(p&&v===p.id){projIconModal();break}S.cur=v;lsSet("pmhub.cur",S.cur);S.d=null;S.q="";loadProject();break;
   case"wbOpen":WB.boardId=v;WB.sel=null;WB.dirty=false;S.lastKey=null;render();setTimeout(function(){if(!wbView().fitted){wbFit();wbView().fitted=true}},60);break;
   case"wbNew":newBoardModal();break;
   case"wbMenu":e.stopPropagation();boardMenu(v);break;
@@ -1270,7 +1270,7 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 700px)","(max-width: 699px)","(min-width: 1100px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1538";
+var APP_VERSION="2026.11.04-1542";
 /* The Android app may run its bundled copy (file://), which cannot fetch relative URLs: always ask the live site. */
 var LIVE_SITE="https://tandem-lake-psi.vercel.app/";
 function updBase(){return location.protocol==="file:"?LIVE_SITE:location.href}
