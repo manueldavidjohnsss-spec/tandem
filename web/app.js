@@ -356,8 +356,8 @@ function render(){
   var p=P();
   var head='<header class="top">'+logo()+'<div class="grow"><select class="i" style="font-weight:700;min-height:38px;padding:6px 10px" data-a="switchProj" aria-label="Project">'+S.projects.map(function(x){return'<option value="'+x.id+'"'+(p&&x.id===p.id?" selected":"")+'>'+esc(x.name)+'</option>'}).join("")+'<option value="__new">+ New project…</option></select>'+
     '<div class="sub row" style="gap:6px;margin-top:3px"><span id="liveDot" class="live'+(S.live?"":" off")+'"><i></i>'+(DB.kind==="demo"?"demo":"live")+'</span>'+(p?'· <span>'+progress()+'% done</span>':'')+'</div></div>'+
-    (p?'<button class="avatars" style="background:none;border:0;cursor:pointer;padding:0" data-a="team" aria-label="Team">'+S.members.slice(0,4).map(function(m){return avatar(m.id)}).join("")+'</button>':'')+
-    (p?bellBtn():'')+'<button class="iconbtn" data-a="settings" aria-label="Settings">'+IC.gear+'</button><button class="iconbtn" data-a="menu" aria-label="Menu">'+IC.menu+'</button></header>';
+    (p&&!isPhone()?'<button class="avatars" style="background:none;border:0;cursor:pointer;padding:0" data-a="team" aria-label="Team">'+S.members.slice(0,4).map(function(m){return avatar(m.id)}).join("")+'</button>':'')+
+    (p?bellBtn():'')+(isPhone()?'':'<button class="iconbtn" data-a="settings" aria-label="Settings">'+IC.gear+'</button>')+'<button class="iconbtn" data-a="menu" aria-label="Menu">'+IC.menu+'</button></header>';
   var body;
   if(!p)body='<div class="card hero"><h2>Welcome'+(S.user.name?", "+esc(S.user.name):"")+'</h2><p class="muted">Create your first project, then invite your teammate from the team button at the top.</p><button class="btn" style="background:#fff;color:#16324f" data-a="newProject">Create a project</button></div><div class="card small muted">Waiting to be added to someone else\'s project? Ask the owner to add <b>'+esc(S.user.email)+'</b>, then pull to refresh or reopen the app.</div>';
   else if(!S.d)body='<div class="empty loading">'+logo()+'<div>'+TH().loading+'</div></div>';
@@ -567,8 +567,9 @@ function kpiStrip(){var b=myBrief(),sp=activeSprint(),p=P();var ip=D().tasks.fil
   return'<div class="kpis">'+k("Due today",b.dueToday.length,b.dueToday.length?"warn":"",'data-a="bfilter" data-v="mine"',"assigned to you")+k("Overdue",b.overdue.length,b.overdue.length?"bad":"",'data-a="bfilter" data-v="mine"',"yours")+k("In progress",ip+'<small>/'+p.wip_limit+'</small>',ip>p.wip_limit?"bad":"",'data-a="tab" data-v="board"',"WIP limit")+k("To review",b.review,b.review?"info":"",'data-a="tab" data-v="board"',"from teammates")+k(sp?esc(sp.name):"Sprint",spTxt,"",'data-a="tab" data-v="sprint"',spSub)+'</div>'}
 function renderDash(){var p=P(),sp=activeSprint(),r=rag();
   var h=kpiStrip()+'<div class="dash">';
-  h+='<div class="card span8"><div class="row between"><h3 style="margin:0">'+(sp?esc(sp.name)+' · burndown':'Sprint burndown')+'</h3>'+(sp?'<button class="btn ghost small" data-a="tab" data-v="sprint">Open sprint</button>':'<button class="btn small" data-a="editSprint" data-v="">Plan a sprint</button>')+'</div>'+(sp?(sp.goal?'<p class="small muted" style="margin:4px 0 8px">🎯 '+esc(sp.goal)+'</p>':'')+burndownSVG(sp):'<div class="empty">No active sprint. Plan one to see the burndown.</div>')+'</div>';
-  h+='<div class="card span4"><h3>Sprint calendar</h3>'+(sp?timeline(sp):'<div class="empty small">No active sprint.</div>')+upcoming()+'</div>';
+  if(!sp&&isPhone())h+='<div class="card nosprint"><div class="row between" style="gap:10px"><div style="min-width:0"><h3 style="margin:0">No active sprint</h3><div class="small muted">Plan one to see the burndown and calendar.</div>'+upcoming()+'</div><button class="btn small" data-a="editSprint" data-v="">Plan a sprint</button></div></div>';
+  else{h+='<div class="card span8"><div class="row between"><h3 style="margin:0">'+(sp?esc(sp.name)+' · burndown':'Sprint burndown')+'</h3>'+(sp?'<button class="btn ghost small" data-a="tab" data-v="sprint">Open sprint</button>':'<button class="btn small" data-a="editSprint" data-v="">Plan a sprint</button>')+'</div>'+(sp?(sp.goal?'<p class="small muted" style="margin:4px 0 8px">🎯 '+esc(sp.goal)+'</p>':'')+burndownSVG(sp):'<div class="empty">No active sprint. Plan one to see the burndown.</div>')+'</div>';
+  h+='<div class="card span4"><h3>Sprint calendar</h3>'+(sp?timeline(sp):'<div class="empty small">No active sprint.</div>')+upcoming()+'</div>'}
   h+='<div class="card span4"><div class="row between"><h3 style="margin:0">Status report</h3><span class="rag '+r+'">'+({G:"Green",A:"Amber",R:"Red"})[r]+'</span></div><div class="small muted" style="margin:6px 0">'+progress()+'% of planned points done</div><div class="bar"><i style="width:'+progress()+'%"></i></div>'+reportMini()+'<div class="row" style="margin-top:10px"><button class="btn small" data-a="copyReport2">Copy full report</button><button class="btn ghost small" data-a="goto" data-v="coach" data-s="report">Edit asks</button></div></div>';
   h+='<div class="card span4"><h3>Velocity</h3>'+velocitySVG()+'</div>';
   h+='<div class="card span4"><h3>Work by status</h3>'+statusStack()+'<h3 style="margin-top:16px">Workload</h3>'+workloadBars()+'</div>';
@@ -1233,7 +1234,7 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 700px)","(max-width: 699px)","(min-width: 1100px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1516";
+var APP_VERSION="2026.11.04-1520";
 /* The Android app may run its bundled copy (file://), which cannot fetch relative URLs: always ask the live site. */
 var LIVE_SITE="https://tandem-lake-psi.vercel.app/";
 function updBase(){return location.protocol==="file:"?LIVE_SITE:location.href}

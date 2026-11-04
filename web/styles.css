@@ -941,3 +941,19 @@ html,body{overflow-x:clip}
   .colnav button .n{padding:0 6px}
   .board.hscroll{grid-auto-columns:84vw;padding-right:calc(16vw - 12px)}
 }
+/* Phones: less crowded — slim scrolling stat row, tighter cards, lighter header */
+@media (max-width:699px){
+  header.top{gap:8px}
+  header.top .logo{width:34px;height:34px;border-radius:10px}
+  header.top .iconbtn{width:38px;height:38px}
+  .app .kpis{display:flex;gap:8px;overflow-x:auto;margin:0 -12px 12px;padding:2px 12px 4px;scroll-padding-inline:12px;scrollbar-width:none}
+  .app .kpis::-webkit-scrollbar{display:none}
+  .app .kpis .kpi{flex:0 0 auto;min-width:104px;max-width:150px;padding:9px 12px;border-radius:14px;gap:1px;box-shadow:none}
+  .app .kpis .kpi .kl{font-size:.62rem}
+  .app .kpis .kpi .kv{font-size:1.3rem}
+  .app .kpis .kpi .ks{font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dash{gap:10px}
+  .dash>.card h3{font-size:.98rem}
+  .dash .empty{padding:14px 8px}
+  .card.nosprint .btn{flex:none}
+}
