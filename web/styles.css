@@ -876,3 +876,12 @@ html,body{overflow-x:clip}
 .kbnav{display:flex;justify-content:space-between;gap:8px}
 .kbnav .btn{max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:699px){.kbart{padding:18px 18px 8px}.kbfoot{padding:12px 18px calc(12px + var(--sab))}.kbart h1{font-size:1.45rem}}
+/* folded Fold / narrow phones: only the active column tab shows its ? */
+@media (max-width:699px){.colnav button:not(.on) .qt{display:none}.colnav button{padding:7px 11px}}
+#tippop{max-width:340px}
+#tippop .tipw span,#tippop .tipe span{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--muted);margin-bottom:1px}
+#tippop .tipe{background:var(--surface2);border-radius:8px;padding:7px 9px}
+.gl dt{font-weight:800;margin-top:16px;font-size:1.02rem}
+.gl dd{margin:4px 0 0;color:var(--ink)}
+.gl .glw,.gl .gle,.gl .glt{font-size:.92rem;margin-top:5px;color:var(--muted)}
+.gl .gle{background:var(--surface2);border-radius:8px;padding:6px 10px;color:var(--ink)}
