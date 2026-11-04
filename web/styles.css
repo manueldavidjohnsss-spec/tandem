@@ -974,3 +974,10 @@ html,body{overflow-x:clip}
   .colnav button.on{background-image:none!important}
   [data-theme=cat] .colnav button.on::before{filter:none}
 }
+/* Phone header: plain project title and borderless icons instead of three boxes */
+@media (max-width:699px){
+  header.top select[data-a=switchProj]{background:transparent;border:0;box-shadow:none;padding:2px 4px 2px 0!important;min-height:0!important;font-size:1.12rem!important;font-weight:800!important;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;width:auto;max-width:100%}
+  header.top .sub{margin-top:0!important}
+  header.top .iconbtn{background:transparent;border-color:transparent;width:36px;height:36px}
+  header.top .iconbtn:active{background:var(--surface2)}
+}
