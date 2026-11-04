@@ -986,3 +986,30 @@ html,body{overflow-x:clip}
 .wbvp[data-tool=hand],.wbvp[data-tool=hand] .wbi,.wbvp[data-tool=hand] .wblink,.wbvp[data-tool=hand] .wblabel{cursor:grab}
 .wbvp[data-tool=hand].panning,.wbvp[data-tool=hand].panning .wbi{cursor:grabbing}
 .wbvp[data-tool=hand] .wbqc,.wbvp[data-tool=hand] [data-rz]{display:none}
+/* Status tiles: each has its own color — tinted fill, colored edge and label */
+.kpi{--kc:var(--muted);border-left:4px solid var(--kc);background:color-mix(in srgb,var(--kc) 10%,var(--surface))}
+.kpi .kl{color:var(--kc);opacity:1}
+.kpi.k-due{--kc:var(--warn)}
+.kpi.k-over{--kc:var(--bad)}
+.kpi.k-ip{--kc:var(--brand2)}
+.kpi.k-rev{--kc:#7c5cff}
+.kpi.k-sp{--kc:var(--good)}
+@media (prefers-color-scheme:dark){.kpi.k-rev{--kc:#a996ff}}
+/* Phone header: solid band in the theme color with light text and icons */
+@media (max-width:699px){
+  header.top{background:var(--brand);color:#fff;border-radius:0 0 18px 18px;padding-bottom:12px;margin-bottom:12px;box-shadow:0 4px 14px rgba(0,0,0,.14);backdrop-filter:none;-webkit-backdrop-filter:none}
+  header.top .logo{background:rgba(255,255,255,.14)}
+  header.top select[data-a=switchProj]{color:#fff;color-scheme:dark}
+  header.top select[data-a=switchProj] option{color:#111;background:#fff}
+  header.top .sub,header.top .live{color:rgba(255,255,255,.78)}
+  header.top .iconbtn{color:#fff}
+  header.top .iconbtn:active{background:rgba(255,255,255,.14)}
+  header.top .bellcount{box-shadow:0 0 0 2px var(--brand)}
+}
+@media (max-width:699px) and (prefers-color-scheme:dark){
+  header.top{background:var(--surface);color:var(--ink);border-bottom:1px solid var(--line)}
+  header.top select[data-a=switchProj]{color:var(--ink)}
+  header.top .sub,header.top .live{color:var(--muted)}
+  header.top .iconbtn{color:var(--ink)}
+  header.top .bellcount{box-shadow:none}
+}

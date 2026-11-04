@@ -565,7 +565,7 @@ function deadlines(){var t=D().tasks.filter(function(x){return x.status!=="Done"
 function kpiStrip(){var b=myBrief(),sp=activeSprint(),p=P();var ip=D().tasks.filter(function(t){return t.status==="In Progress"}).length;var spTxt="None",spPct=0,spSub="Plan one";
   if(sp){var st=sprintTasks(sp),tot=st.reduce(function(a,t){return a+(+t.points||0)},0),dn=st.filter(function(t){return t.status==="Done"}).reduce(function(a,t){return a+(+t.points||0)},0);spTxt=dn+'<small>/'+tot+' pts</small>';spPct=tot?dn/tot*100:0;spSub='<span class="bar"><i style="width:'+spPct+'%"></i></span>'}
   var k=function(label,val,cls,act,sub){return'<button class="kpi '+(cls||"")+'" '+act+'><span class="kl">'+label+'</span><span class="kv">'+val+'</span><span class="ks">'+(sub||"")+'</span></button>'};
-  return'<div class="kpis">'+k("Due today",b.dueToday.length,b.dueToday.length?"warn":"",'data-a="bfilter" data-v="mine"',"assigned to you")+k("Overdue",b.overdue.length,b.overdue.length?"bad":"",'data-a="bfilter" data-v="mine"',"yours")+k("In progress",ip+'<small>/'+p.wip_limit+'</small>',ip>p.wip_limit?"bad":"",'data-a="tab" data-v="board"',"WIP limit")+k("To review",b.review,b.review?"info":"",'data-a="tab" data-v="board"',"from teammates")+k(sp?esc(sp.name):"Sprint",spTxt,"",'data-a="tab" data-v="sprint"',spSub)+'</div>'}
+  return'<div class="kpis">'+k("Due today",b.dueToday.length,"k-due "+(b.dueToday.length?"warn":""),'data-a="bfilter" data-v="mine"',"assigned to you")+k("Overdue",b.overdue.length,"k-over "+(b.overdue.length?"bad":""),'data-a="bfilter" data-v="mine"',"yours")+k("In progress",ip+'<small>/'+p.wip_limit+'</small>',"k-ip "+(ip>p.wip_limit?"bad":""),'data-a="tab" data-v="board"',"WIP limit")+k("To review",b.review,"k-rev "+(b.review?"info":""),'data-a="tab" data-v="board"',"from teammates")+k(sp?esc(sp.name):"Sprint",spTxt,"k-sp",'data-a="tab" data-v="sprint"',spSub)+'</div>'}
 function renderDash(){var p=P(),sp=activeSprint(),r=rag();
   var h=kpiStrip()+'<div class="dash">';
   if(!sp&&isPhone())h+='<div class="card nosprint"><div class="row between" style="gap:10px"><div style="min-width:0"><h3 style="margin:0">No active sprint</h3><div class="small muted">Plan one to see the burndown and calendar.</div>'+upcoming()+'</div><button class="btn small" data-a="editSprint" data-v="">Plan a sprint</button></div></div>';
@@ -1236,7 +1236,7 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 700px)","(max-width: 699px)","(min-width: 1100px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1526";
+var APP_VERSION="2026.11.04-1530";
 /* The Android app may run its bundled copy (file://), which cannot fetch relative URLs: always ask the live site. */
 var LIVE_SITE="https://tandem-lake-psi.vercel.app/";
 function updBase(){return location.protocol==="file:"?LIVE_SITE:location.href}
