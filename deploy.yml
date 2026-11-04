@@ -1,0 +1,18 @@
+name: Deploy to Vercel
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_bvBOuFTHMpCg90qdMF3GOWJH
+      VERCEL_PROJECT_ID: prj_tKrPgfOqEuZr9BJU7cQ4EYLANAcW
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: rm -f Tandem.apk
+      - run: npx vercel@latest deploy --prod --yes --token "${{ secrets.VERCEL_TOKEN }}"
