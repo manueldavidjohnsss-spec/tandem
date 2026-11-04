@@ -957,3 +957,20 @@ html,body{overflow-x:clip}
   .dash .empty{padding:14px 8px}
   .card.nosprint .btn{flex:none}
 }
+/* Phone board header: smaller filter chips (WIP scrolls with them), compact segmented column bar */
+@media (max-width:699px){
+  .boardbar{margin-bottom:10px}
+  .boardbar .chips{gap:6px}
+  .boardbar .chip{padding:5px 11px;font-size:.82rem;min-height:32px}
+  .boardbar .chip .av{width:20px;height:20px;font-size:.55rem}
+  .wipchip{display:inline-flex;align-items:center;gap:6px;flex:none;font-size:.78rem;color:var(--muted);padding-left:4px}
+  .wipchip .wipsel{min-height:32px;padding:3px 26px 3px 10px;font-size:.82rem;width:auto}
+  .colnav{gap:2px;margin:0 0 12px;padding:3px;background:var(--surface2);border-radius:12px;scroll-padding-inline:3px}
+  .colnav button{flex:1 0 auto;border:0;background:transparent;border-radius:9px;padding:6px 8px;gap:4px;font-size:.76rem;min-height:0}
+  .colnav button .n{background:transparent;padding:0;font-size:.72rem;color:var(--muted);font-weight:600}
+  .colnav button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+  .colnav button.on .n{background:transparent;color:var(--brand2)}
+  .colnav button.bad .n{background:transparent;color:var(--bad)}
+  .colnav button.on{background-image:none!important}
+  [data-theme=cat] .colnav button.on::before{filter:none}
+}

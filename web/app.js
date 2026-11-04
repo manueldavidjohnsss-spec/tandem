@@ -407,7 +407,8 @@ function renderBoard(){
   var tasks=D().tasks.filter(function(t){return(f==="all"||(f==="mine"&&t.assignee===S.user.id)||(f==="none"&&!t.assignee)||(f.indexOf("u:")===0&&t.assignee===f.slice(2))||(f==="sprint"&&sp&&t.sprint_id===sp.id))&&(!q||(taskKey(t)+" "+t.title+" "+(t.description||"")).toLowerCase().indexOf(q.replace(/^#/,""))>=0||(/^#?\d+$/.test(q)&&String(t.num)===q.replace("#","")))});
   var ipAll=D().tasks.filter(function(t){return t.status==="In Progress"}).length;
   var h='<div class="row between boardbar"><div class="chips"><button class="chip'+(f==="all"?" on":"")+'" data-a="bfilter" data-v="all">All</button><button class="chip'+(f==="mine"?" on":"")+'" data-a="bfilter" data-v="mine">Mine</button>'+S.members.filter(function(m){return m.id!==S.user.id}).map(function(m){return'<button class="chip pchip'+(f==="u:"+m.id?" on":"")+'" data-a="bfilter" data-v="u:'+m.id+'">'+avatar(m.id,1)+esc(m.name.split(" ")[0])+'</button>'}).join("")+'<button class="chip'+(f==="none"?" on":"")+'" data-a="bfilter" data-v="none">Unassigned</button>'+(sp?'<button class="chip'+(f==="sprint"?" on":"")+'" data-a="bfilter" data-v="sprint">'+esc(sp.name)+'</button>':'')+'</div>'+(desk?'<label class="searchbox">'+IC.search+'<input id="search" placeholder="Search tasks or IDs (/)" value="'+esc(S.q||"")+'"></label>':'')+
-  '<div class="row small muted">WIP <select class="i wipsel" data-a="wip">'+[1,2,3,4,5,6,8,10].map(function(n){return'<option'+(n===p.wip_limit?" selected":"")+'>'+n+'</option>'}).join("")+'</select>'+(phone||desk?'':'<button class="btn small" data-a="editTask" data-v="">+ Task</button>')+'</div></div>';
+  '<div class="row small muted wiprow">WIP <select class="i wipsel" data-a="wip">'+[1,2,3,4,5,6,8,10].map(function(n){return'<option'+(n===p.wip_limit?" selected":"")+'>'+n+'</option>'}).join("")+'</select>'+(phone||desk?'':'<button class="btn small" data-a="editTask" data-v="">+ Task</button>')+'</div></div>';
+  if(phone)h=h.replace('</div><div class="row small muted wiprow">',' <span class="wipchip">').replace(/<\/select><\/div><\/div>$/,'</select></span></div></div>');
   if(isDesk())h=kpiStrip()+h;else h=briefCard()+h;
   var curCol=S.col||"To Do";
   if(phone)h+='<div class="colnav" role="tablist">'+COLS.map(function(c){var n=tasks.filter(function(t){return t.status===c}).length;var short=c==="In Progress"?"In Prog.":c;return'<button role="tab" aria-label="'+c+'" class="'+(c===curCol?"on":"")+(c==="In Progress"&&ipAll>p.wip_limit?" bad":"")+'" data-a="col" data-v="'+c+'"><span class="col-label">'+c+'</span><span class="col-label compact">'+short+'</span><span class="n">'+n+'</span></button>'}).join("")+'</div>';
@@ -1234,7 +1235,7 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 700px)","(max-width: 699px)","(min-width: 1100px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1520";
+var APP_VERSION="2026.11.04-1522";
 /* The Android app may run its bundled copy (file://), which cannot fetch relative URLs: always ask the live site. */
 var LIVE_SITE="https://tandem-lake-psi.vercel.app/";
 function updBase(){return location.protocol==="file:"?LIVE_SITE:location.href}
