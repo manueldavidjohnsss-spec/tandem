@@ -373,7 +373,7 @@ function render(){
   app.classList.toggle("desk",desk);
   if(!fresh){if(desk){var mb=document.querySelector(".mainbody");if(mb)mb.scrollTop=y0}else window.scrollTo(0,y)}
   if(fresh&&!reducedMotion()){app.classList.remove("anim");void app.offsetWidth;app.classList.add("anim");app.querySelectorAll(".card,.task,.issue,.lrow").forEach(function(el,i){el.style.setProperty("--i",Math.min(i,12))});clearTimeout(S.animT);S.animT=setTimeout(function(){app.classList.remove("anim")},900)}else if(!fresh)app.classList.remove("anim");
-  var tabsHtml=TABS.map(function(t){return'<button class="'+(S.tab===t[0]?"on":"")+'" data-a="tab" data-v="'+t[0]+'">'+IC[t[0]]+'<span>'+t[1]+'</span></button>'}).join("");
+  var tabsHtml=TABS.map(function(t){var short=t[1]==="Dashboard"?"Dash":t[1];return'<button class="'+(S.tab===t[0]?"on":"")+'" data-a="tab" data-v="'+t[0]+'" aria-label="'+t[1]+'">'+IC[t[0]]+'<span class="tab-label">'+t[1]+'</span><span class="tab-label compact">'+short+'</span></button>'}).join("");
   var tb=document.getElementById("tabs");if(desk){tb.innerHTML="";tb.setAttribute("data-k","")}else if(tb.getAttribute("data-k")!==S.tab+theme){tb.innerHTML=tabsHtml;tb.setAttribute("data-k",S.tab+theme)}
   if(S.tab==="board"&&p&&S.d){if(phone)wireSwipe();else wireDrag()}
   if(S.tab==="ideas"&&p&&S.d&&WB.boardId)mountWB();
@@ -406,7 +406,7 @@ function renderBoard(){
   '<div class="row small muted">WIP <select class="i wipsel" data-a="wip">'+[1,2,3,4,5,6,8,10].map(function(n){return'<option'+(n===p.wip_limit?" selected":"")+'>'+n+'</option>'}).join("")+'</select>'+(phone||desk?'':'<button class="btn small" data-a="editTask" data-v="">+ Task</button>')+'</div></div>';
   if(isDesk())h=kpiStrip()+h;else h=briefCard()+h;
   var curCol=S.col||"To Do";
-  if(phone)h+='<div class="colnav" role="tablist">'+COLS.map(function(c){var n=tasks.filter(function(t){return t.status===c}).length;return'<button role="tab" class="'+(c===curCol?"on":"")+(c==="In Progress"&&ipAll>p.wip_limit?" bad":"")+'" data-a="col" data-v="'+c+'">'+c+'<span class="n">'+n+'</span></button>'}).join("")+'</div>';
+  if(phone)h+='<div class="colnav" role="tablist">'+COLS.map(function(c){var n=tasks.filter(function(t){return t.status===c}).length;var short=c==="In Progress"?"In Prog.":c;return'<button role="tab" aria-label="'+c+'" class="'+(c===curCol?"on":"")+(c==="In Progress"&&ipAll>p.wip_limit?" bad":"")+'" data-a="col" data-v="'+c+'"><span class="col-label">'+c+'</span><span class="col-label compact">'+short+'</span><span class="n">'+n+'</span></button>'}).join("")+'</div>';
   var cols=phone?[curCol]:COLS;
   h+='<div class="board'+(phone?" single":"")+'" id="board">'+cols.map(function(c){var ci=COLS.indexOf(c);var ts=tasks.filter(function(t){return t.status===c});
     if(c==="Done")ts.sort(function(a,b){return(b.done_at||"").localeCompare(a.done_at||"")});else ts.sort(function(a,b){return PRI.indexOf(a.priority||"Wont")-PRI.indexOf(b.priority||"Wont")||(a.due||"9").localeCompare(b.due||"9")});
@@ -1029,7 +1029,7 @@ function settingsModal(){S.inSettings=true;var nat=appNative();
   '<div class="setsec"><div class="slabel">About</div><div class="setcard">'+row("Tandem version",APP_RELEASE)+row("Build",esc(APP_VERSION))+(buildDate(APP_VERSION)?row("Released",buildDate(APP_VERSION)):'')+(nat?row("Android app",esc(nat.version)+' <span class="muted small">(build '+nat.code+')</span>'):row("Platform",isDesk()?"Web · desktop":"Web"))+row("Data",DB.kind==="demo"?"Demo (this device)":"Supabase · synced")+'</div>'+
   '<button class="btn ghost" style="width:100%;margin-top:10px" data-a="settingsCheck">'+(nat&&S.apkLatest&&S.apkLatest.code>nat.code?'📲 Update app to '+esc(S.apkLatest.version):'Check for updates')+'</button></div>'+
   '<div class="setsec" style="border:0"><button class="btn ghost" style="width:100%" data-a="signout">Sign out</button></div>',function(){},{drawer:true})}
-function settingsCheck(btn){var nat=appNative();if(nat&&S.apkLatest&&S.apkLatest.code>nat.code){installApk();return}
+function settingsCheck(btn){var nat=appNative();if(nat&&S.apkLatest&&S.apkLatest.code>nat.code){installApk(S.apkLatest);return}
   if(btn){btn.disabled=true;btn.textContent="Checking…"}
   fetch("version.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){
     if(btn){btn.disabled=false;btn.textContent="Check for updates"}
@@ -1158,7 +1158,7 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 700px)","(max-width: 699px)","(min-width: 1100px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1350";
+var APP_VERSION="2026.11.04-1407";
 function appNative(){try{if(!window.AndroidBridge)return null;if(!AndroidBridge.appInfo)return{version:"1.0",code:1};var i=JSON.parse(AndroidBridge.appInfo());if(!i.code){var p=String(i.version||"2.0").split(".");i.code=p[0]==="2"?6+(+p[1]||0):1}return i}catch(e){return{version:"?",code:1}}}
 function checkApk(j){var a=j&&j.android,me=appNative();if(!a||!me||!(a.code>me.code))return;S.apkLatest=a;if(lsGet("pmhub.apkLater")===String(a.code)+"|"+today()||document.getElementById("apkbar"))return;
   var d=document.createElement("div");d.className="updbar apk";d.id="apkbar";d.innerHTML='<span>📲 <b>Tandem '+esc(a.version)+'</b> is available'+(a.notes?'<br><span class="small" style="opacity:.8">'+esc(a.notes)+'</span>':'')+'</span><button class="btn small" id="apkgo">Update</button><button class="x" id="apkx" aria-label="Later" style="color:inherit">×</button>';document.body.appendChild(d);
