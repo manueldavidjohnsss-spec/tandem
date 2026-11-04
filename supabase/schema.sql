@@ -212,6 +212,9 @@ create table if not exists public.boards (
 create index if not exists boards_project_idx on public.boards(project_id);
 alter table public.board_items add column if not exists board_id uuid references public.boards(id) on delete cascade;
 create index if not exists board_items_board_idx on public.board_items(board_id);
+
+-- v2.7: lock board items in place (safe to re-run)
+alter table public.board_items add column if not exists locked boolean not null default false;
 create table if not exists public.board_snapshots (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
