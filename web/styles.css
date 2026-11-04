@@ -967,12 +967,13 @@ html,body{overflow-x:clip}
   .wipchip .wipsel{min-height:32px;padding:3px 26px 3px 10px;font-size:.82rem;width:auto}
   .colnav{gap:2px;margin:0 0 12px;padding:3px;background:var(--surface2);border-radius:12px;scroll-padding-inline:3px}
   .colnav button{flex:1 0 auto;border:0;background:transparent;border-radius:9px;padding:6px 8px;gap:4px;font-size:.76rem;min-height:0}
-  .colnav button .n{background:transparent;padding:0;font-size:.72rem;color:var(--muted);font-weight:600}
-  .colnav button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
-  .colnav button.on .n{background:transparent;color:var(--brand2)}
+  .colnav{border:1px solid var(--line)}
+  .colnav button{color:var(--ink);font-weight:600}
+  .colnav button .n{background:transparent;padding:0;font-size:.72rem;color:var(--ink);opacity:.6;font-weight:700}
+  .colnav button.on{background:var(--brand2);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+  .colnav button.on .n{background:transparent;color:#fff;opacity:.85}
+  .board.hscroll .col{border:1px solid var(--line)}
   .colnav button.bad .n{background:transparent;color:var(--bad)}
-  .colnav button.on{background-image:none!important}
-  [data-theme=cat] .colnav button.on::before{filter:none}
 }
 /* Phone header: plain project title and borderless icons instead of three boxes */
 @media (max-width:699px){
@@ -981,3 +982,7 @@ html,body{overflow-x:clip}
   header.top .iconbtn{background:transparent;border-color:transparent;width:36px;height:36px}
   header.top .iconbtn:active{background:var(--surface2)}
 }
+/* whiteboard Hand tool: pan only, items can't be grabbed */
+.wbvp[data-tool=hand],.wbvp[data-tool=hand] .wbi,.wbvp[data-tool=hand] .wblink,.wbvp[data-tool=hand] .wblabel{cursor:grab}
+.wbvp[data-tool=hand].panning,.wbvp[data-tool=hand].panning .wbi{cursor:grabbing}
+.wbvp[data-tool=hand] .wbqc,.wbvp[data-tool=hand] [data-rz]{display:none}
