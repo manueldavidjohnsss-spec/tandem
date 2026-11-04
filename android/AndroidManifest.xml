@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ph.tandem" android:versionCode="10" android:versionName="2.3">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ph.tandem" android:versionCode="11" android:versionName="2.4">
   <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -7,7 +7,7 @@
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
   <application android:label="Tandem" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:usesCleartextTraffic="false" android:theme="@style/AppTheme">
-    <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|uiMode" android:windowSoftInputMode="adjustResize">
+    <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode" android:resizeableActivity="true" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
       <intent-filter>
         <action android:name="android.intent.action.VIEW"/>
