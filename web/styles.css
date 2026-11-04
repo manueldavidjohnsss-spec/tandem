@@ -159,6 +159,9 @@ input.i,select.i,textarea.i{font-size:16px}
 .colnav button.on .n{background:rgba(255,255,255,.25);color:#fff}
 .colnav button.bad .n{background:var(--bad);color:#fff}
 .board.single{display:block;overflow:visible}
+.board.hscroll{grid-auto-columns:82vw;margin:0 -12px;padding:2px 12px 10px;scroll-padding-inline:12px;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;align-items:start}
+.board.hscroll::-webkit-scrollbar{display:none}
+.board.hscroll .col{min-height:55vh;scroll-snap-align:start;scroll-snap-stop:always}
 .board.single .col{min-height:50vh;background:transparent;padding:0}
 .board.single .colh{display:none}
 .swipehint{text-align:center;margin-top:8px}

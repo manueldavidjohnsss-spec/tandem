@@ -366,7 +366,7 @@ function render(){
   if(p&&S.d&&phone&&(S.tab==="board"||S.tab==="sprint"))body+='<button class="fab" data-a="editTask" data-v="" aria-label="New task">+</button>';
   var desk=isDesk();
   if(desk){var y0=(document.querySelector(".mainbody")||{}).scrollTop||0;}
-  var key=(desk?"D":"M")+S.tab+"|"+(S.sub[S.tab]||"")+"|"+S.cur+"|"+(S.tab==="board"?S.filter+"|"+(S.col||""):"")+(S.tab==="ideas"?"|"+(WB.boardId||""):"")+"|"+theme+"|"+(!!S.d);
+  var key=(desk?"D":"M")+S.tab+"|"+(S.sub[S.tab]||"")+"|"+S.cur+"|"+(S.tab==="board"?S.filter:"")+(S.tab==="ideas"?"|"+(WB.boardId||""):"")+"|"+theme+"|"+(!!S.d);
   var app=document.getElementById("app");var fresh=key!==S.lastKey;S.lastKey=key;
   var y=window.scrollY;
   app.innerHTML=desk?deskShell(p,body):head+body;
@@ -375,7 +375,7 @@ function render(){
   if(fresh&&!reducedMotion()){app.classList.remove("anim");void app.offsetWidth;app.classList.add("anim");app.querySelectorAll(".card,.task,.issue,.lrow").forEach(function(el,i){el.style.setProperty("--i",Math.min(i,12))});clearTimeout(S.animT);S.animT=setTimeout(function(){app.classList.remove("anim")},900)}else if(!fresh)app.classList.remove("anim");
   var tabsHtml=TABS.map(function(t){var short=t[1]==="Dashboard"?"Dash":t[1];return'<button class="'+(S.tab===t[0]?"on":"")+'" data-a="tab" data-v="'+t[0]+'" aria-label="'+t[1]+'">'+IC[t[0]]+'<span class="tab-label">'+t[1]+'</span><span class="tab-label compact">'+short+'</span></button>'}).join("");
   var tb=document.getElementById("tabs");if(desk){tb.innerHTML="";tb.setAttribute("data-k","")}else if(tb.getAttribute("data-k")!==S.tab+theme){tb.innerHTML=tabsHtml;tb.setAttribute("data-k",S.tab+theme)}
-  if(S.tab==="board"&&p&&S.d){if(phone)wireSwipe();else wireDrag()}
+  if(S.tab==="board"&&p&&S.d){if(phone)wireHScroll();else wireDrag()}
   if(S.tab==="ideas"&&p&&S.d&&WB.boardId)mountWB();
   if(S.focusSearch){var si=document.getElementById("search");if(si){si.focus();var L2=si.value.length;si.setSelectionRange(L2,L2)}S.focusSearch=false}
   annotateTerms(app);
@@ -392,9 +392,13 @@ function deskShell(p,body){var hr=new Date().getHours();var greet=(hr<12?"Good m
   '<main class="main"><header class="dtop"><div class="grow"><div class="crumb">'+(p?esc(tabName):"Welcome")+'</div><h1>'+(p?esc(p.name):"Tandem")+'</h1><div class="sub row" style="gap:8px"><span id="liveDot" class="live'+(S.live?"":" off")+'"><i></i>'+(DB.kind==="demo"?"demo":"live")+'</span>'+(p&&S.d?'<span>· '+progress()+'% done</span><span>· '+greet+'</span>'+(b&&!b.posted?'<a href="#" data-a="goto" data-v="sprint" data-s="standup">· Post today\'s standup</a>':''):'')+'</div></div>'+
   (p?'<button class="avatars" style="background:none;border:0;cursor:pointer;padding:0" data-a="team" title="Team">'+S.members.slice(0,5).map(function(m){return avatar(m.id)}).join("")+'</button><button class="btn ghost" data-a="team">Invite</button>'+bellBtn()+'<button class="btn" data-a="editTask" data-v="">+ New task</button>':'')+'</header>'+
   '<div class="mainbody'+(S.tab==="board"&&p&&S.d?" boardview":"")+(S.tab==="ideas"&&p&&S.d&&WB.boardId?" ideasview":"")+'"><div class="'+(S.tab==="board"?"boardwrap":S.tab==="ideas"&&WB.boardId?"ideaswrap":"viewwrap"+(S.tab==="dash"||S.tab==="ideas"?" wide":""))+'">'+body+'</div></div></main></div>'}
-function wireSwipe(){var b=document.getElementById("board");if(!b)return;var x0=null,y0=null;
-  b.addEventListener("touchstart",function(e){x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
-  b.addEventListener("touchend",function(e){if(x0==null)return;var dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;var i=COLS.indexOf(S.col||"To Do")+(dx<0?1:-1);if(i<0||i>=COLS.length)return;S.slideDir=dx<0?"L":"R";S.col=COLS[i];buzz(8);render()},{passive:true})}
+/* phone board: all columns side by side, scrolled sideways; tabs follow and jump */
+function boardColAt(b){var cols=b.querySelectorAll(".col"),best=0,bd=1e9;for(var i=0;i<cols.length;i++){var d=Math.abs(cols[i].offsetLeft-b.offsetLeft-b.scrollLeft-parseFloat(getComputedStyle(b).scrollPaddingLeft||0));if(d<bd){bd=d;best=i}}return cols[best]?cols[best].dataset.col:COLS[0]}
+function markColTab(c){document.querySelectorAll(".colnav button").forEach(function(x){x.classList.toggle("on",x.dataset.v===c)});var on=document.querySelector(".colnav button.on");if(on&&on.scrollIntoView)try{on.scrollIntoView({block:"nearest",inline:"nearest"})}catch(e){}}
+function scrollToCol(c,smooth){var b=document.getElementById("board");if(!b)return;var el=b.querySelector('.col[data-col="'+c+'"]');if(!el)return;var x=el.offsetLeft-b.offsetLeft-parseFloat(getComputedStyle(b).scrollPaddingLeft||0);S.boardX=Math.max(0,Math.min(x,b.scrollWidth-b.clientWidth));if(smooth&&b.scrollTo)b.scrollTo({left:x,behavior:reducedMotion()?"auto":"smooth"});else b.scrollLeft=x}
+function wireHScroll(){var b=document.getElementById("board");if(!b)return;
+  if(S.boardX!=null)b.scrollLeft=S.boardX;else scrollToCol(S.col||"To Do");
+  var t=null;b.addEventListener("scroll",function(){S.boardX=b.scrollLeft;clearTimeout(t);t=setTimeout(function(){var c=boardColAt(b);if(c!==S.col){S.col=c;buzz(5)}markColTab(c)},90)},{passive:true})}
 
 /* ---------- Board ---------- */
 function renderBoard(){
@@ -407,16 +411,16 @@ function renderBoard(){
   if(isDesk())h=kpiStrip()+h;else h=briefCard()+h;
   var curCol=S.col||"To Do";
   if(phone)h+='<div class="colnav" role="tablist">'+COLS.map(function(c){var n=tasks.filter(function(t){return t.status===c}).length;var short=c==="In Progress"?"In Prog.":c;return'<button role="tab" aria-label="'+c+'" class="'+(c===curCol?"on":"")+(c==="In Progress"&&ipAll>p.wip_limit?" bad":"")+'" data-a="col" data-v="'+c+'"><span class="col-label">'+c+'</span><span class="col-label compact">'+short+'</span><span class="n">'+n+'</span></button>'}).join("")+'</div>';
-  var cols=phone?[curCol]:COLS;
-  h+='<div class="board'+(phone?" single":"")+'" id="board">'+cols.map(function(c){var ci=COLS.indexOf(c);var ts=tasks.filter(function(t){return t.status===c});
+  var cols=COLS;
+  h+='<div class="board'+(phone?" hscroll":"")+'" id="board">'+cols.map(function(c){var ci=COLS.indexOf(c);var ts=tasks.filter(function(t){return t.status===c});
     if(c==="Done")ts.sort(function(a,b){return(b.done_at||"").localeCompare(a.done_at||"")});else ts.sort(function(a,b){return PRI.indexOf(a.priority||"Wont")-PRI.indexOf(b.priority||"Wont")||(a.due||"9").localeCompare(b.due||"9")});
     var pts=ts.reduce(function(a,t){return a+(+t.points||0)},0);var over=c==="In Progress"&&ipAll>p.wip_limit;
-    return'<div class="col'+(phone&&S.slideDir?" slide"+S.slideDir:"")+'" data-col="'+c+'"><div class="colh"><span>'+c+'</span><span class="cnt'+(over?" bad":"")+'">'+ts.length+(c==="In Progress"?" · WIP "+ipAll+"/"+p.wip_limit:"")+' · '+pts+' pts</span></div>'+
-    (!desk&&(ci===0||phone)&&c!=="Done"?'<div class="quick"><input class="i" id="quickAdd" placeholder="Quick add to '+c+'… (verb first)" enterkeyhint="done"><button class="btn small" data-a="quickAdd" data-v="'+c+'">Add</button></div>':'')+
+    return'<div class="col" data-col="'+c+'"><div class="colh"><span>'+c+'</span><span class="cnt'+(over?" bad":"")+'">'+ts.length+(c==="In Progress"?" · WIP "+ipAll+"/"+p.wip_limit:"")+' · '+pts+' pts</span></div>'+
+    (!desk&&(ci===0||phone)&&c!=="Done"?'<div class="quick"><input class="i qadd" data-col="'+c+'"'+(ci===0||!phone?' id="quickAdd"':'')+' placeholder="Quick add to '+c+'… (verb first)" enterkeyhint="done"><button class="btn small" data-a="quickAdd" data-v="'+c+'">Add</button></div>':'')+
     (over?'<div class="tip badbox small">Over the WIP limit. Finish or review something before starting more.</div>':'')+
     '<div class="colbody">'+ts.map(function(t){return taskCard(t,cp,ci,phone)}).join("")+(ts.length?'':'<div class="empty small colempty">'+((theme!=="classic"&&theme!=="pro")?'<div class="mini">'+MASCOT[theme]+'</div>':'')+TH().empty+'</div>')+(desk&&c!=="Done"?'<button class="coladd" data-a="addIn" data-v="'+c+'">+ Add task</button>':'')+'</div></div>'}).join("")+'</div>';
   if(desk)return h;
-  h+=phone?'<div class="small muted swipehint">Swipe ← → to switch columns · tap a card for details</div>':'<div class="small muted" style="margin-top:6px">Orange edge = critical path · Red edge = blocked · Tap a card for details & comments</div>';
+  h+=phone?'<div class="small muted swipehint">Scroll sideways to see every column · tap a card for details</div>':'<div class="small muted" style="margin-top:6px">Orange edge = critical path · Red edge = blocked · Tap a card for details & comments</div>';
   return h;
 }
 function projPrefix(p){p=p||P();if(!p)return"T";if(p.task_prefix)return p.task_prefix;var w=String(p.name||"T").replace(/[^A-Za-z0-9 ]/g,"").trim().split(/\s+/);return(w.length>=2?w.map(function(x){return x[0]}).join("").slice(0,4):w[0].slice(0,3)).toUpperCase()||"T"}
@@ -1093,7 +1097,7 @@ function settingsModal(){S.inSettings=true;var nat=appNative();
   '<div class="mnrow" style="margin-top:12px"><label class="switch"><input type="checkbox" data-a="tipsToggle"'+(tipsOn()?" checked":"")+'><span></span></label><div class="grow"><b>Term help</b><div class="small muted">Show a ? next to project-management terms</div></div></div></div>'+
   '<div class="setsec"><div class="slabel">Notifications</div>'+notifSettingsHTML()+'<div class="slabel" style="margin:16px 0 8px">Morning brief</div>'+morningHTML()+'</div>'+
   '<div class="setsec"><div class="slabel">About</div><div class="setcard">'+row("Tandem version",APP_RELEASE)+row("Build",esc(APP_VERSION))+(buildDate(APP_VERSION)?row("Released",buildDate(APP_VERSION)):'')+(nat?row("Android app",esc(nat.version)+' <span class="muted small">(build '+nat.code+')</span>'):row("Platform",isDesk()?"Web · desktop":"Web"))+row("Data",DB.kind==="demo"?"Demo (this device)":"Supabase · synced")+'</div>'+
-  '<button class="btn ghost" style="width:100%;margin-top:10px" data-a="settingsCheck">'+(nat&&S.apkLatest&&S.apkLatest.code>nat.code?'📲 Update app to '+esc(S.apkLatest.version):'Check for updates')+'</button></div>'+
+  (nat?'':'<a class="btn ghost" style="width:100%;margin-top:10px;display:flex;justify-content:center;text-decoration:none" href="'+esc(new URL((S.apkInfo&&S.apkInfo.url)||"downloads/Tandem.apk",updBase()).href)+'" download>📲 Download Android app'+(S.apkInfo&&S.apkInfo.version?' ('+esc(S.apkInfo.version)+')':'')+'</a>')+'<button class="btn ghost" style="width:100%;margin-top:10px" data-a="settingsCheck">'+(nat&&S.apkLatest&&S.apkLatest.code>nat.code?'📲 Update app to '+esc(S.apkLatest.version):'Check for updates')+'</button></div>'+
   '<div class="setsec" style="border:0"><button class="btn ghost" style="width:100%" data-a="signout">Sign out</button></div>',function(){},{drawer:true})}
 function settingsCheck(btn){var nat=appNative();if(nat&&S.apkLatest&&S.apkLatest.code>nat.code){installApk(S.apkLatest);return}
   if(btn){btn.disabled=true;btn.textContent="Checking…"}
@@ -1152,14 +1156,14 @@ document.addEventListener("click",async function(e){
   case"newProject":closeModal();modal('<div class="mh"><h3>New project</h3><button class="x" data-a="close">×</button></div><label class="f">Project name</label><input class="i" id="npn" placeholder="e.g. FDE interview prep"><div class="hint">Then fill in the charter and invite your teammate.</div><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" id="npok">Create</button></div>',function(m){m.querySelector("#npn").focus();m.querySelector("#npok").onclick=async function(){var n=m.querySelector("#npn").value.trim();if(!n)return;closeModal();try{var np=await DB.createProject(n,S.user.id);S.projects=await DB.projects();S.cur=np.id;lsSet("pmhub.cur",S.cur);S.tab="plan";S.sub.plan="charter";await loadProject();toast("Project created. Start with the charter.")}catch(x){toast("⚠ "+x.message)}}});break;
   case"deleteProject":closeModal();confirmBox("Delete “"+p.name+"” and everything in it for everyone? This can\'t be undone.",async function(){try{await DB.deleteProject(p.id);S.cur=null;await loadProjects()}catch(x){toast("⚠ "+x.message)}},"Delete");break;
   case"exportProject":{closeModal();var blob=JSON.stringify({project:p,members:S.members,data:S.d},null,1);copyText(blob).then(function(ok){toast(ok?"Project data copied as JSON":"Couldn\'t copy on this device")});break}
-  case"quickAdd":{var qa=document.getElementById("quickAdd");var tt=qa.value.trim();if(!tt)return;qa.value="";buzz(8);await act(function(){return DB.ins("tasks",{project_id:p.id,title:tt,status:v||"Backlog",assignee:(v&&v!=="Backlog")?S.user.id:null})});var q=document.getElementById("quickAdd");if(q)q.focus();break}
+  case"quickAdd":{var qa=el.parentNode.querySelector("input");var tt=qa.value.trim();if(!tt)return;qa.value="";buzz(8);await act(function(){return DB.ins("tasks",{project_id:p.id,title:tt,status:v||"Backlog",assignee:(v&&v!=="Backlog")?S.user.id:null})});var q=document.querySelector('.qadd[data-col="'+(v||"Backlog")+'"]');if(q)q.focus();break}
   case"editTask":editTask(v);break;
   case"move":{e.stopPropagation();var t=taskById(v);var i=COLS.indexOf(t.status)+(+el.dataset.d);if(i>=0&&i<COLS.length)setStatus(v,COLS[i]);break}
   case"bfilter":S.filter=v;render();break;
   case"dismissBrief":lsSet("pmhub.brief",today()+"|"+S.cur);S.forceBrief=false;var bc=el.closest(".brief");if(bc&&!reducedMotion()){bc.classList.add("leaving");setTimeout(render,220)}else render();break;
   case"showBrief":closeModal();lsSet("pmhub.brief",null);S.forceBrief=true;S.tab="board";S.lastKey=null;render();window.scrollTo(0,0);break;
   case"mnTest":try{AndroidBridge.morningTest();toast("Test notification sent")}catch(x){toast("Couldn't send")}break;
-  case"col":{var ci2=COLS.indexOf(v),cc=COLS.indexOf(S.col||"To Do");if(ci2===cc)break;S.slideDir=ci2>cc?"L":"R";S.col=v;buzz(8);render();break}
+  case"col":{S.col=v;buzz(8);markColTab(v);scrollToCol(v,true);break}
   case"theme":theme=v;lsSet("pmhub.theme",v);applyTheme();syncNative();buzz(10);var reS=S.inSettings&&document.querySelector(".modal .setsec");closeModal();S.lastKey=null;if(S.user)render();else if(DB)renderAuth();else renderConnect();if(reS)settingsModal();toast(THEMES[v].label+" theme on");break;
   case"editSprint":editSprint(v);break;
   case"closeSprint":{var sp=D().sprints.filter(function(x){return x.id===v})[0];confirmBox("Close "+sp.name+"? Unfinished tasks go back to the backlog and velocity is recorded.",function(){act(async function(){var st=D().tasks.filter(function(t){return t.sprint_id===sp.id});var vel=st.filter(function(t){return t.status==="Done"}).reduce(function(a,t){return a+(+t.points||0)},0);await DB.upd("sprints",sp.id,{status:"Closed",velocity:vel});var un=st.filter(function(t){return t.status!=="Done"});for(var j=0;j<un.length;j++)await DB.upd("tasks",un[j].id,{sprint_id:null});toast(sp.name+" closed: "+vel+" pts. Time for a retro!");S.sub.sprint="retro"})},"Close sprint");break}
@@ -1225,17 +1229,17 @@ document.addEventListener("keydown",function(e){var tg=e.target,typing=/INPUT|TE
     if(e.key==="n"||e.key==="N"){e.preventDefault();editTask("");return}
     if(e.key==="/"){var si=document.getElementById("search");if(!si&&isDesk()){S.tab="board";render();si=document.getElementById("search")}if(si){e.preventDefault();si.focus()}return}
     var n=parseInt(e.key,10);if(n>=1&&n<=TABS.length){S.tab=TABS[n-1][0];lsSet("pmhub.tab",S.tab);render();return}}
-  if(e.key==="Escape"&&tg.id==="search"){S.q="";tg.value="";render();return}if(e.key==="Enter"&&e.target.id==="quickAdd"){e.preventDefault();var qb=e.target.parentNode.querySelector('[data-a="quickAdd"]');if(qb)qb.click()}if(e.key==="Escape")closeModal()});
+  if(e.key==="Escape"&&tg.id==="search"){S.q="";tg.value="";render();return}if(e.key==="Enter"&&e.target.classList&&e.target.classList.contains("qadd")){e.preventDefault();var qb=e.target.parentNode.querySelector('[data-a="quickAdd"]');if(qb)qb.click()}if(e.key==="Escape")closeModal()});
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&S.user&&P())loadProject(true)});
 try{["(min-width: 700px)","(max-width: 699px)","(min-width: 1100px)"].forEach(function(q){var mq=window.matchMedia(q);var fn=function(){S.lastKey=null;if(S.user)render()};if(mq.addEventListener)mq.addEventListener("change",fn);else mq.addListener(fn)})}catch(e){}
 /* auto-update: reload into the newest deploy */
-var APP_VERSION="2026.11.04-1459";
+var APP_VERSION="2026.11.04-1512";
 /* The Android app may run its bundled copy (file://), which cannot fetch relative URLs: always ask the live site. */
 var LIVE_SITE="https://tandem-lake-psi.vercel.app/";
 function updBase(){return location.protocol==="file:"?LIVE_SITE:location.href}
 function verUrl(){return new URL("version.json?t="+Date.now(),updBase()).href}
 function appNative(){try{if(!window.AndroidBridge)return null;if(!AndroidBridge.appInfo)return{version:"1.0",code:1};var i=JSON.parse(AndroidBridge.appInfo());if(!i.code){var p=String(i.version||"2.0").split(".");i.code=p[0]==="2"?6+(+p[1]||0):1}return i}catch(e){return{version:"?",code:1}}}
-function checkApk(j){var a=j&&j.android,me=appNative();if(!a||!me||!(a.code>me.code))return;S.apkLatest=a;if(lsGet("pmhub.apkLater")===String(a.code)+"|"+today()||document.getElementById("apkbar"))return;
+function checkApk(j){var a=j&&j.android,me=appNative();if(a)S.apkInfo=a;if(!a||!me||!(a.code>me.code))return;S.apkLatest=a;if(lsGet("pmhub.apkLater")===String(a.code)+"|"+today()||document.getElementById("apkbar"))return;
   var d=document.createElement("div");d.className="updbar apk";d.id="apkbar";d.innerHTML='<span>📲 <b>Tandem '+esc(a.version)+'</b> is available'+(a.notes?'<br><span class="small" style="opacity:.8">'+esc(a.notes)+'</span>':'')+'</span><button class="btn small" id="apkgo">Update</button><button class="x" id="apkx" aria-label="Later" style="color:inherit">×</button>';document.body.appendChild(d);
   d.querySelector("#apkgo").onclick=function(){installApk(a);d.remove()};d.querySelector("#apkx").onclick=function(){lsSet("pmhub.apkLater",String(a.code)+"|"+today());d.remove()}}
 function installApk(a){var url=new URL(a.url,updBase()).href;try{if(window.AndroidBridge&&AndroidBridge.installUpdate&&AndroidBridge.installUpdate(url)){toast("Downloading the update… Android will ask you to install it.");return}}catch(e){}try{AndroidBridge.openExternal(url);toast("Opening the download in Chrome. Tap the file when it finishes to install.")}catch(e){location.href=url}}
@@ -1245,6 +1249,14 @@ function checkUpdate(){if(!window.fetch)return;fetch(verUrl(),{cache:"no-store"}
   if(!busy&&document.visibilityState==="visible"&&S.updateSeen!==j.v){S.updateSeen=j.v;var d=document.createElement("div");d.className="updbar";d.innerHTML='✨ A new version of Tandem is ready. <button class="btn small">Update now</button>';d.querySelector("button").onclick=function(){location.reload()};document.body.appendChild(d)}
   if(document.visibilityState==="hidden")S.reloadOnShow=true}).catch(function(){})}
 setInterval(checkUpdate,5*60*1000);setTimeout(checkUpdate,window.AndroidBridge?2500:8000);
+/* suggest the Android app to phone-sized browsers on Android (not inside the app itself); "Not now" hides it for 14 days */
+function suggestApp(){if(window.AndroidBridge||!isPhone()||!/Android/i.test(navigator.userAgent||"")||document.getElementById("getappbar")||document.getElementById("apkbar"))return;
+  var later=+lsGet("pmhub.getAppLater")||0;if(Date.now()-later<14*864e5)return;
+  if(document.getElementById("layer").innerHTML){setTimeout(suggestApp,15000);return}
+  var d=document.createElement("div");d.className="updbar apk";d.id="getappbar";d.innerHTML='<span>📱 <b>Get the Tandem app</b><br><span class="small" style="opacity:.8">Phone alerts, morning brief and a full-screen app on your home screen.</span></span><button class="btn small" id="getappgo">Download</button><button class="x" id="getappx" aria-label="Not now" style="color:inherit">×</button>';document.body.appendChild(d);
+  d.querySelector("#getappgo").onclick=function(){lsSet("pmhub.getAppLater",String(Date.now()));d.remove();location.href=new URL("downloads/Tandem.apk",updBase()).href;setTimeout(function(){toast("Downloading… open the file when it finishes and tap Install.")},400)};
+  d.querySelector("#getappx").onclick=function(){lsSet("pmhub.getAppLater",String(Date.now()));d.remove()}}
+setTimeout(suggestApp,4000);
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"){if(S.reloadOnShow&&!document.getElementById("layer").innerHTML){location.reload();return}checkUpdate()}});
 window.TandemBack=function(){if(document.getElementById("layer").innerHTML){closeModal();return true}return false};
 
