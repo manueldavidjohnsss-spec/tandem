@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Live site the app loads (auto-updates with every Vercel deploy). Empty = use the copy bundled in the APK. -->
+  <string name="app_url"></string>
+</resources>

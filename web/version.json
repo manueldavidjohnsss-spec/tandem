@@ -1,0 +1,9 @@
+{
+ "v": "2026.11.04-1228",
+ "android": {
+  "version": "2.2",
+  "code": 9,
+  "url": "downloads/Tandem.apk",
+  "notes": "Save boards as PNG to your phone, and in-app updates from now on."
+ }
+}

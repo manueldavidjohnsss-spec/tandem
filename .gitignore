@@ -1,0 +1,6 @@
+*.jks
+*.keystore
+android/build/
+.vercel
+.DS_Store
+node_modules/
