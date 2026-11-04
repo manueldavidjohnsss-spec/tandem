@@ -737,3 +737,13 @@ html,body{min-height:100%}
 #tippop .tipmore{background:none;border:0;padding:2px 0 0;color:var(--brand2);font-weight:600;font-size:.82rem;cursor:pointer}
 @keyframes tipIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 [data-theme=pro] #tippop{border-radius:8px}
+/* ===== settings ===== */
+.setsec{padding:14px 0;border-bottom:1px solid var(--line)}
+.setsec:first-of-type{padding-top:4px}
+.setsec>.slabel{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:var(--muted);margin:0 0 10px}
+.setcard{border:1px solid var(--line);border-radius:12px;background:var(--surface2);padding:4px 12px}
+.setrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;font-size:.92rem}
+.setrow+.setrow{border-top:1px solid var(--line)}
+.setrow b{text-align:right;font-variant-numeric:tabular-nums}
+[data-theme=pro] .setcard{border-radius:8px}
+@media (max-width:440px){header.top .avatars{display:none}}
